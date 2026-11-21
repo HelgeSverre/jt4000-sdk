@@ -95,7 +95,7 @@ of delay memory at 16 kHz, not seconds of sampling.
 |---|---|---|
 | Start-up, display, lights, buttons, encoder, knobs, keyboard, audio, analog filter, USB MIDI in and out, flashing from a running synth, the sound blocks and menu | — | Preset storage helpers, DIN MIDI |
 
-`examples/trance` is confirmed on hardware. `examples/ambient` was rebuilt as a text-free sound box and has so far only been checked in the simulator.
+`examples/trance` and `examples/ambient` (the text-free sound box) are both confirmed on hardware.
 
 ## Safety and recovery
 

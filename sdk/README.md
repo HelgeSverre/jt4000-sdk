@@ -6,8 +6,8 @@ SynthTribe and no debug probe.
 Status: verified on real hardware at the full 170 MHz clock: start-up, display, all six
 buttons and their lights, the SELECT knob, cutoff and resonance pots, the 16-key touch
 keyboard, interrupt-driven audio out, the analog filter and USB MIDI in both directions.
-The sound blocks and menu are confirmed through `examples/trance`. `examples/ambient`
-(the sound box) is checked in the simulator only so far. Not yet: preset storage helpers, DIN MIDI.
+The sound blocks and menu are confirmed through `examples/trance`, live drawing through
+`examples/ambient` (the sound box). Not yet: preset storage helpers, DIN MIDI.
 
 ## Requirements
 
