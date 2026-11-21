@@ -1,4 +1,4 @@
-/* A sound box. No menus, no words: six buttons, two knobs, pictures.
+/* An ambient sound box. No menus, no words: six buttons, two knobs, pictures.
  *
  * It plays itself (a slow generator picks notes from a scale) and you nudge it. Each
  * button opens a scene; the two knobs then shape that part of the sound, and the display

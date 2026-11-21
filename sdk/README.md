@@ -7,7 +7,7 @@ Status: verified on real hardware at the full 170 MHz clock: start-up, display, 
 buttons and their lights, the SELECT knob, cutoff and resonance pots, the 16-key touch
 keyboard, interrupt-driven audio out, the analog filter and USB MIDI in both directions.
 The sound blocks and menu are confirmed through `examples/trance`, live drawing through
-`examples/ambient` (the sound box). Not yet: preset storage helpers, DIN MIDI.
+`examples/soundbox`. Not yet: preset storage helpers, DIN MIDI.
 
 ## Requirements
 
@@ -74,7 +74,7 @@ The DAC feeds the analog filter, so digital effects sit *before* it: closing the
 
 ## Menu (`include/jt_menu.h`)
 
-Describe up to six pages (one per panel button) as tables of items that point at your `int16_t` variables; call `jt_menu_poll()` every 10 ms. Turn SELECT to choose, press to edit. See `examples/ambient`.
+Describe up to six pages (one per panel button) as tables of items that point at your `int16_t` variables; call `jt_menu_poll()` every 10 ms. Turn SELECT to choose, press to edit. See `examples/trance`.
 
 ## Examples
 
@@ -82,7 +82,7 @@ Describe up to six pages (one per panel button) as tables of items that point at
 |---|---|
 | `hello`, `panel`, `bringup` | display, inputs, start-up stages |
 | `tone` | one oscillator, keyboard, USB MIDI notes and CCs |
-| `ambient` | a sound box with no text: a generator plays notes from a scale, six buttons open six animated scenes, the two knobs shape the open one; echo, grains, reverb, boot animation |
+| `soundbox` | an ambient sound box with no text: a generator plays notes from a scale, six buttons open six animated scenes, the two knobs shape the open one; echo, grains, reverb, boot animation |
 | `trance` | seven-saw supersaw, trance gate, tempo-synced delay, presets, built-in riffs and arpeggiator that follow the held key; `tools/riff.py` imports MIDI files as extra riffs |
 
 ## Rules the bootloader imposes

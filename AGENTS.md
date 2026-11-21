@@ -10,7 +10,7 @@ Run everything from `sdk/`. A firmware is a folder `examples/<name>/` with a `ma
 
 1. **Start** from a working example: `make new APP=<name>` copies `examples/hello`.
    Read `examples/trance/main.c` before building anything with sound or a menu, and
-   `examples/ambient/main.c` for drawing live pictures.
+   `examples/soundbox/main.c` for drawing live pictures.
 2. **Build**: `make APP=<name>`. Done when it compiles with zero warnings.
 3. **Simulate**: `make APP=<name> sim` draws the display as text. For sound, capture and
    measure it; never judge audio by reading the code:
@@ -60,7 +60,7 @@ too. Mono only.
 - Share state between the main loop and `render` through plain word-sized variables, and
   wrap multi-field updates (starting a note) in `cpsid i` / `cpsie i`.
 - Compute slow things once per block (pitch, filter coefficients, LFO), fast things per
-  sample. `examples/ambient/main.c` shows the split.
+  sample. `examples/soundbox/main.c` shows the split.
 
 ## Hardware facts are looked up
 

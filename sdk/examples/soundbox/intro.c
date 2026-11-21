@@ -46,7 +46,7 @@ static void tear(int y, int shift) {
 void intro(void) {
     static const uint8_t RISE[4] = {26, 38, 45, 50};            /* D1, D2, A2, D3 */
     static const uint8_t CHORD[4] = {38, 57, 62, 66};           /* D2, A3, D4, F#4 */
-    static const char SUB[] = "AMBIENT  SDK 0.1";
+    static const char SUB[] = "AMBIENT SOUNDBOX";
     int risen = 0, hit = 0;
     uint32_t t, start = now();
 

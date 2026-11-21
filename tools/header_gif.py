@@ -1,6 +1,6 @@
 """Draw the README header: the sound box's orbit scene on a wide virtual OLED, with a title.
 
-Uses the SDK's own 8x8 font and the same orbit maths as sdk/examples/ambient (draw_motion).
+Uses the SDK's own 8x8 font and the same orbit maths as sdk/examples/soundbox (draw_motion).
 
     uv run --with pillow tools/header_gif.py            # writes docs/header.gif
 """

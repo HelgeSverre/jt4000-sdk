@@ -26,7 +26,7 @@ brew install arm-none-eabi-gcc arm-none-eabi-binutils uv     # macOS
 cd sdk
 make sim                      # build examples/hello and run it in the simulator
 make flash                    # build and flash it to the synth
-make APP=ambient flash        # a self-playing sound box: six buttons, two knobs, pictures, no menus
+make APP=soundbox flash       # an ambient sound box: plays itself; six buttons, two knobs, pictures, no menus
 make APP=trance flash         # supersaw, trance gate, built-in riffs
 make new APP=mysynth          # start your own from examples/hello
 ```
@@ -95,7 +95,7 @@ of delay memory at 16 kHz, not seconds of sampling.
 |---|---|---|
 | Start-up, display, lights, buttons, encoder, knobs, keyboard, audio, analog filter, USB MIDI in and out, flashing from a running synth, the sound blocks and menu | — | Preset storage helpers, DIN MIDI |
 
-`examples/trance` and `examples/ambient` (the text-free sound box) are both confirmed on hardware.
+`examples/trance` and `examples/soundbox` (the text-free ambient sound box) are both confirmed on hardware.
 
 ## Safety and recovery
 
