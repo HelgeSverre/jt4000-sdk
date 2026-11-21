@@ -1,0 +1,28 @@
+.DS_Store
+.venv/
+.ruff_cache/
+__pycache__/
+sdk/build/
+*.wav
+ghidra/project/
+
+# Behringer's firmware is not redistributed: fetch it with `uv run tools/fwfetch.py`
+firmware/*.bin
+firmware/decrypted/
+firmware/custom/
+firmware/listing.json
+sdk/examples/*/user_riffs.h
+ghidra/out/
+
+# Third-party manuals: links in docs/manuals/README.md
+docs/manuals/*.pdf
+docs/manuals/*.txt
+
+# Logic analyser captures (large); the exported .csv and .log files are kept
+captures/*.sal
+captures/*.log
+
+# Third-party photos, device backups, early probe files
+docs/images/
+dumps/
+probes/

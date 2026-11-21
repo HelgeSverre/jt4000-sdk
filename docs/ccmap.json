@@ -1,0 +1,181 @@
+{
+ "values_sent": [
+  0,
+  32,
+  64,
+  96,
+  127
+ ],
+ "base": [
+  5,
+  4,
+  52,
+  0,
+  12,
+  0,
+  0,
+  3,
+  0,
+  0,
+  0,
+  0,
+  99,
+  82,
+  0,
+  0,
+  0,
+  0,
+  0,
+  99,
+  99,
+  50,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  12,
+  10,
+  0,
+  0,
+  70,
+  65,
+  84,
+  83,
+  65,
+  87,
+  32,
+  32,
+  32
+ ],
+ "ccs": {
+  "1": {
+   "name": "Modulation",
+   "offsets": {}
+  },
+  "5": {
+   "name": "Portamento Time",
+   "offsets": {}
+  },
+  "24": {
+   "name": "OSC1 Wave",
+   "offsets": {}
+  },
+  "25": {
+   "name": "OSC2 Wave",
+   "offsets": {}
+  },
+  "28": {
+   "name": "LFO2 Amount",
+   "offsets": {}
+  },
+  "70": {
+   "name": "LFO1 Amount",
+   "offsets": {}
+  },
+  "71": {
+   "name": "VCF Resonance",
+   "offsets": {}
+  },
+  "72": {
+   "name": "LFO1 Rate",
+   "offsets": {}
+  },
+  "73": {
+   "name": "LFO2 Rate",
+   "offsets": {}
+  },
+  "74": {
+   "name": "VCF Cutoff",
+   "offsets": {}
+  },
+  "81": {
+   "name": "VCA EG Attack",
+   "offsets": {}
+  },
+  "82": {
+   "name": "VCA EG Decay",
+   "offsets": {}
+  },
+  "83": {
+   "name": "VCA EG Sustain",
+   "offsets": {}
+  },
+  "84": {
+   "name": "VCA EG Release",
+   "offsets": {}
+  },
+  "85": {
+   "name": "VCF EG Attack",
+   "offsets": {}
+  },
+  "86": {
+   "name": "VCF EG Decay",
+   "offsets": {}
+  },
+  "87": {
+   "name": "VCF EG Sustain",
+   "offsets": {}
+  },
+  "88": {
+   "name": "VCF EG Release",
+   "offsets": {}
+  },
+  "95": {
+   "name": "Ring Modulation Amount",
+   "offsets": {}
+  },
+  "96": {
+   "name": "Ring Modulation on/off",
+   "offsets": {}
+  },
+  "111": {
+   "name": "OSC1 Fine Tune",
+   "offsets": {}
+  },
+  "112": {
+   "name": "OSC2 Fine Tune",
+   "offsets": {}
+  },
+  "113": {
+   "name": "OSC1 PWM/supersaw Detune/FM Feedback",
+   "offsets": {}
+  },
+  "114": {
+   "name": "OSC2 PWM",
+   "offsets": {}
+  },
+  "115": {
+   "name": "OSC1 Coarse Tune",
+   "offsets": {}
+  },
+  "116": {
+   "name": "OSC2 Coarse Tune",
+   "offsets": {}
+  }
+ }
+}

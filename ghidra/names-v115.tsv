@@ -1,0 +1,80 @@
+# address	name	comment        (1.1.5 image; applied by scripts/JtApplyNames.java)
+08016f28	sysex_handle_message	Full SysEx command switch: 00 dump, 02 reboot to update mode, 04 model code, 08 version, 10/15 receive presets
+08017064	sysex_send_current_preset	Reply cmd 15: 64 bytes of the selected preset from EEPROM
+08017130	sysex_send_all_presets	Reply cmd 10: 2048 bytes, all 32 presets
+08012760	sysex_reboot_to_update_mode	Replies 03 00, writes 0xAA to EEPROM 0x7FC0, then system reset
+080171fc	eeprom_queue_update_flag	Queues a 1-byte write of 0xAA at EEPROM address 0x7FC0
+08017678	sysex_checksum7	(-sum(bytes)) & 0x7F
+08016dc0	eeprom_read	eeprom_read(offset, buf, len) in 64-byte pages, I2C1 device 0xA0
+0800b838	HAL_I2C_Mem_Read	
+0800b99c	HAL_I2C_Mem_Write	
+0800b2a8	HAL_GPIO_Init	
+0800b47a	HAL_GPIO_WritePin	
+0800b284	HAL_Delay	
+08008682	memclr	
+08008308	sprintf	
+080151c8	preset_load_current	Reads the selected preset from EEPROM, range-checks every byte, fills synth_params
+08008cec	ui_menu_update_and_draw	Menu pages: reads knobs A/B, writes preset_buf and synth_params, draws text
+08015600	midi_handle_cc	Control-change handler: switch on CC number, writes preset_buf and synth_params, sets the edited flag
+0800e710	gpio_init	PA5 OLED reset, PA6 OLED CS, PA15 OLED D/C outputs; PA10, PB0, PB4 inputs
+0800e7b4	i2c1_init	I2C1 = EEPROM bus (PB7 SDA, PB8 SCL)
+0800e7f8	i2c2_init	I2C2 (PA8 SDA, PA9 SCL)
+0800aaf8	HAL_ADC_MspInit	ADC1 inputs PA2, PA3, PB0
+0800ae54	HAL_DAC_MspInit	DAC1 OUT1 on PA4, fed by DMA1 channel 1
+0800baf4	HAL_I2C_MspInit	
+0800cd4c	HAL_SPI_MspInit	SPI1: PA7 MOSI, PB3 SCK (OLED)
+0800d4d0	HAL_TIM2_MspInit	TIM2 CH1/CH2 on PA0/PA1
+0800d5bc	HAL_TIM_MspPostInit	TIM4 CH1 on PB6 (AF2), TIM8 CH3N on PB5 (AF3)
+0800d910	i2c_read_6_bytes_reg40	Reads 6 bytes from register 0x40 of an I2C device (touch keys?)
+0800f1fc	usbmidi_pack	Packs a MIDI/SysEx byte string into USB-MIDI packets; returns length
+0800f88c	usbmidi_transmit	
+0800e190	ui_request_redraw	
+20004a13	preset_buf	64-byte preset record being edited
+2000092c	ui_state	[0] menu, [2] page, [7] settings item, [10] selected preset index
+20000940	synth_params	Engine parameters derived from the preset
+20002ed0	sysex_rx_buf	
+2000039c	hi2c1	
+0800eb3c	midi_handle_note	Note on/off handler (chords, arp, voice allocation). 1 KB in 1.1.2, 9 KB from 1.1.4
+08017058	knob_relatch	Called when a CC changes the parameter on the visible page, with that knob state and its raw reading; likely re-arms knob pickup (inferred)
+08014c14	knob_changed	Returns 1 when the knob has moved (picked up) since the last check
+20000010	knobs_raw	u16[2]: [0] knob B, [1] knob A raw readings
+20003c04	global_settings	[5] MIDI receive channel, [9] CC receive enable; loaded from EEPROM 0x7F40
+200001a6	sysex_rx_status	3 = rejected ("WRONG FILE")
+20000204	eeprom_wr_pending	Non-zero while a queued EEPROM write is in progress
+2000020a	eeprom_wr_request	Queued EEPROM write: +0 data byte, +4 length, +6 offset, +10 data pointer
+2000020e	eeprom_wr_length	
+20000210	eeprom_wr_offset	
+20000214	eeprom_wr_data_ptr	
+20003c5b	usb_tx_buf	
+2000273c	husb_device	
+200003e8	hi2c2	
+40021000	RCC	
+48000000	GPIOA	
+48000400	GPIOB	
+48001400	GPIOF	
+40005400	I2C1	
+40005800	I2C2	
+40013000	SPI1	
+40004400	USART2	
+40005c00	USB	
+50000000	ADC1	
+50000100	ADC2	
+50000800	DAC1	
+40020000	DMA1	
+40010400	EXTI	
+40022000	FLASH	
+40003000	IWDG	
+40012c00	TIM1	
+40000000	TIM2	
+40000400	TIM3	
+40000800	TIM4	
+40001000	TIM6	
+40001400	TIM7	
+40013400	TIM8	
+40014000	TIM15	
+40014400	TIM16	
+40014800	TIM17	
+e000ed0c	SCB_AIRCR	
+08015cc0	ui_handle_buttons	Reads OSC (PB4) and SETTINGS (PA10) pins and the I2C key bits; switches menus
+0800b470	HAL_GPIO_ReadPin	
+0800b484	HAL_GetTick	
