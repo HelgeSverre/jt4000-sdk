@@ -1,5 +1,7 @@
 # JT-4000 Micro: custom firmware
 
+![JT-4000 custom firmware SDK: a dot orbiting on a pixel display](docs/header.gif)
+
 Write your own firmware for the Behringer JT-4000 Micro in C and flash it over the synth's
 own USB port in about three seconds. No SynthTribe, no debug probe, no opening the case.
 
