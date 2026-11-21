@@ -7,7 +7,7 @@ Status: verified on real hardware at the full 170 MHz clock: start-up, display, 
 buttons and their lights, the SELECT knob, cutoff and resonance pots, the 16-key touch
 keyboard, interrupt-driven audio out, the analog filter and USB MIDI in both directions.
 The sound blocks and menu are confirmed through `examples/trance`. `examples/ambient`
-runs too, as a rougher starting point. Not yet: preset storage helpers, DIN MIDI.
+(the sound box) is checked in the simulator only so far. Not yet: preset storage helpers, DIN MIDI.
 
 ## Requirements
 
@@ -82,7 +82,7 @@ Describe up to six pages (one per panel button) as tables of items that point at
 |---|---|
 | `hello`, `panel`, `bringup` | display, inputs, start-up stages |
 | `tone` | one oscillator, keyboard, USB MIDI notes and CCs |
-| `ambient` | four voices, menu, delay, grains, reverb, boot animation |
+| `ambient` | a sound box with no text: a generator plays notes from a scale, six buttons open six animated scenes, the two knobs shape the open one; echo, grains, reverb, boot animation |
 | `trance` | seven-saw supersaw, trance gate, tempo-synced delay, presets, built-in riffs and arpeggiator that follow the held key; `tools/riff.py` imports MIDI files as extra riffs |
 
 ## Rules the bootloader imposes

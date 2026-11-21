@@ -9,7 +9,8 @@ theirs are the hardware. Use both, in that order.
 Run everything from `sdk/`. A firmware is a folder `examples/<name>/` with a `main.c`.
 
 1. **Start** from a working example: `make new APP=<name>` copies `examples/hello`.
-   Read `examples/ambient/main.c` before building anything with sound or a menu.
+   Read `examples/trance/main.c` before building anything with sound or a menu, and
+   `examples/ambient/main.c` for drawing live pictures.
 2. **Build**: `make APP=<name>`. Done when it compiles with zero warnings.
 3. **Simulate**: `make APP=<name> sim` draws the display as text. For sound, capture and
    measure it; never judge audio by reading the code:
