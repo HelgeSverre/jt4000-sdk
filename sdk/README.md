@@ -1,13 +1,10 @@
-# JT-4000 Micro SDK (early)
+# JT-4000 Micro SDK
 
 Build custom firmware for the Behringer JT-4000 Micro in C and flash it over USB, with no
 SynthTribe and no debug probe.
 
-Status: verified on real hardware at the full 170 MHz clock: start-up, display, all six
-buttons and their lights, the SELECT knob, cutoff and resonance pots, the 16-key touch
-keyboard, interrupt-driven audio out, the analog filter and USB MIDI in both directions.
-The sound blocks and menu are confirmed through `examples/trance`, live drawing through
-`examples/soundbox`. Not yet: preset storage helpers, DIN MIDI.
+Everything here has run on a real JT-4000 at the full 170 MHz clock. Not written yet:
+preset storage helpers and DIN MIDI.
 
 ## Requirements
 

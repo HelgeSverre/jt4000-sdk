@@ -89,13 +89,7 @@ Two consequences shape most designs. The analog filter comes **after** the DAC, 
 filters everything, digital effects included. And 32 KiB of RAM means about half a second
 of delay memory at 16 kHz, not seconds of sampling.
 
-## Status
-
-| Works on hardware | Simulator only so far | Not done |
-|---|---|---|
-| Start-up, display, lights, buttons, encoder, knobs, keyboard, audio, analog filter, USB MIDI in and out, flashing from a running synth, the sound blocks and menu | — | Preset storage helpers, DIN MIDI |
-
-`examples/trance` and `examples/soundbox` (the text-free ambient sound box) are both confirmed on hardware.
+Everything in the SDK has run on a real JT-4000. Not written yet: preset storage helpers and DIN MIDI.
 
 ## Safety and recovery
 
