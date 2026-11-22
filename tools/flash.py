@@ -133,8 +133,14 @@ class Boot:
     def identify(self) -> tuple[bytes, bytes]:
         """Sync and return (chip id, info), or stop if this is not a JT-4000 bootloader.
         Nothing on the device has been changed when this refuses."""
-        self.sync()
-        chip, info = self.get_id(), self.info()
+        try:
+            self.sync()
+            chip, info = self.get_id(), self.info()
+        except (serial.SerialException, RuntimeError, OSError) as e:
+            sys.exit(
+                f"the bootloader on {self.s.port} does not answer ({e}). Switch the synth "
+                "off and on, then try again. Nothing was erased."
+            )
         if chip != CHIP_ID or not info.startswith(INFO_PREFIX):
             sys.exit(
                 f"refusing: {self.s.port} does not answer like a JT-4000 bootloader "
@@ -156,11 +162,21 @@ class Boot:
             sys.exit(f"the bootloader refused to start the application ({what})")
 
 
-def wait_for_application(wait: float = 8.0) -> None:
+def wait_for_application(boot: Boot, wait: float = 8.0) -> None:
     """Confirm the bootloader has gone, then look for the synth's MIDI port."""
     deadline = time.monotonic() + wait
     while find_serial():
         if time.monotonic() > deadline:
+            # The stock firmware, started this way, leaves the bootloader's USB device
+            # listed on the host. A bootloader that is really still there answers.
+            try:
+                boot.get_id()
+            except (serial.SerialException, RuntimeError, OSError):
+                print(
+                    "started the application: the bootloader no longer answers. Its USB "
+                    "port is still listed, so switch the synth off and on to get USB MIDI back."
+                )
+                return
             sys.exit(
                 "the application did not start: the synth is still in update mode. "
                 "The image is written; power-cycle the synth, or flash again."
@@ -238,7 +254,7 @@ def cmd_flash(a) -> None:
             print(f"\rwriting {off:#7x} / {SIZE:#x}", end="", flush=True)
     print(f"\rwrote {SIZE:#x} bytes in {time.monotonic() - t0:.1f} s")
     b.go()
-    wait_for_application()
+    wait_for_application(b)
 
 
 def main() -> None:
