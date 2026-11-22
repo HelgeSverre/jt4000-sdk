@@ -5,66 +5,66 @@ uv := "uv"
 panel := "uv run --with pygame-ce --with sounddevice --with numpy tools/panel.py"
 stock_image := "firmware/JT-4000_INTFLASH_CRY_V115.bin"
 
-# Show available recipes
+# List recipes
 default:
     @just --list
 
 # === Firmware ===
 
-# List the apps that can be built
+# List apps
 [group('firmware')]
 apps:
     @ls sdk/examples
 
-# Build an app for the synth (e.g. just build groove)
+# Build an app
 [group('firmware')]
 build app="hello":
     make -C sdk APP={{ app }}
 
-# Build an app and flash it to the synth (e.g. just flash groove)
+# Build and flash an app
 [group('firmware')]
 flash app:
     make -C sdk APP={{ app }} flash
 
-# Start a new app from examples/hello
+# New app from hello
 [group('firmware')]
 new app:
     make -C sdk APP={{ app }} new
 
-# Flash the factory firmware back (downloads it first if needed)
+# Flash factory firmware
 [group('firmware')]
 stock:
     test -f {{ stock_image }} || {{ uv }} run tools/fwfetch.py
     {{ uv }} run tools/flash.py flash {{ stock_image }}
 
-# Download the factory firmware images
+# Download factory firmware
 [group('firmware')]
 fetch *args:
     {{ uv }} run tools/fwfetch.py {{ args }}
 
-# Remove everything that was built
+# Remove build output
 [group('firmware')]
 clean:
     make -C sdk clean
 
 # === Preview ===
 
-# Run an app in a window that looks like the synth, with sound (e.g. just host groove)
+# Run an app in the synth window
 [group('preview')]
 host app *args:
     {{ panel }} {{ app }} {{ args }}
 
-# Save a picture of an app after some milliseconds (e.g. just shot drone 3000)
+# Screenshot an app
 [group('preview')]
 shot app ms="3000" *args:
     {{ panel }} {{ app }} --ms {{ ms }} {{ args }}
 
-# Save a video of an app with sound (e.g. just video choir 8000 choir.mp4)
+# Record a video of an app
 [group('preview')]
 video app ms="8000" out="demo.mp4" *args:
     {{ panel }} {{ app }} --ms {{ ms }} --video {{ out }} {{ args }}
 
-# Run the real ARM binary in the slow, exact simulator and print the display
+# Run the ARM binary in the simulator
 [group('preview')]
 sim app="hello" *args:
     make -C sdk APP={{ app }}
@@ -72,35 +72,35 @@ sim app="hello" *args:
 
 # === Words ===
 
-# Rebuild an app's words.h from its words.txt (e.g. just words choir --rate 110)
+# Rebuild an app's word bank
 [group('words')]
 words app *args:
     {{ uv }} run --with numpy tools/lpcwords.py --list sdk/examples/{{ app }}/words.txt --out sdk/examples/{{ app }}/words.h {{ args }}
 
-# Turn MIDI files into riffs for the trance app
+# MIDI files to trance riffs
 [group('words')]
 riffs *args:
     {{ uv }} run --with mido tools/riff.py {{ args }}
 
 # === QA ===
 
-# Build every app for the synth and for the computer
+# Build every app, both targets
 [group('qa')]
 build-all:
     for app in $(ls sdk/examples); do make -s -C sdk APP=$app && make -s -C sdk APP=$app host || exit 1; done
 
-# Check lint and formatting without changing files
+# Lint, no changes
 [group('qa')]
 lint:
     {{ uv }} run ruff check .
     {{ uv }} run ruff format --check .
 
-# Format all Python files
+# Format Python
 [group('qa')]
 format:
     {{ uv }} run ruff format .
     {{ uv }} run ruff check --fix .
 
-# Pre-commit gate: lint, then build everything
+# Lint and build all
 [group('qa')]
 check: lint build-all
