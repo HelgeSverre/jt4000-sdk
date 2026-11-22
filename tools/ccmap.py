@@ -13,6 +13,7 @@ import argparse
 import json
 import time
 
+import cli
 import mido
 from sysex import DUMP_REQUESTS, HEADER, build, collect, open_ports
 
@@ -107,4 +108,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli.run(main)

@@ -18,6 +18,8 @@ import re
 import sys
 from pathlib import Path
 
+import cli
+
 OUT = Path(__file__).resolve().parent.parent / "sdk/examples/trance/user_riffs.h"
 NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 # Krumhansl-Kessler key profiles: how strongly each scale degree belongs to a key.
@@ -32,7 +34,18 @@ def read_notes(
     """(start tick, pitch, length in ticks, velocity) for every note, and ticks per beat."""
     import mido
 
-    mid = mido.MidiFile(path)
+    if not path.is_file():
+        sys.exit(f"error: {path}: no such file")
+    try:
+        mid = mido.MidiFile(path)
+    except (OSError, EOFError, ValueError, KeyError, IndexError) as e:
+        sys.exit(
+            f"error: {path.name}: not a readable MIDI file ({e or type(e).__name__})"
+        )
+    if track is not None and not 0 <= track < len(mid.tracks):
+        sys.exit(
+            f"error: {path.name} has tracks 0..{len(mid.tracks) - 1}; --track {track} is not one"
+        )
     notes = []
     for ti, tr in enumerate(mid.tracks):
         if track is not None and ti != track:
@@ -66,7 +79,7 @@ def convert(
 ) -> tuple[int, list[tuple[int, int, int, int]], str]:
     notes, tpb = read_notes(path, a.track)
     if not notes:
-        sys.exit(f"{path.name}: no notes found")
+        sys.exit(f"error: {path.name}: no notes found (drum channel 10 is skipped)")
     step_ticks = tpb / 4
     first_bar = (
         int(notes[0][0] / step_ticks) // 16 if a.start_bar is None else a.start_bar
@@ -74,7 +87,9 @@ def convert(
     lo, hi = first_bar * 16, (first_bar + a.bars) * 16
     window = [n for n in notes if lo <= round(n[0] / step_ticks) < hi]
     if not window:
-        sys.exit(f"{path.name}: no notes in bars {first_bar}..{first_bar + a.bars - 1}")
+        sys.exit(
+            f"error: {path.name}: no notes in bars {first_bar}..{first_bar + a.bars - 1}"
+        )
     tonic = NAMES.index(a.tonic.upper()) if a.tonic else guess_tonic(window)
     pitches = sorted(n[1] for n in window)
     median = pitches[len(pitches) // 2]
@@ -163,4 +178,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli.run(main)

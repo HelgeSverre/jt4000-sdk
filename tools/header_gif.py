@@ -11,7 +11,14 @@ import math
 import re
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+import cli
+
+try:
+    from PIL import Image, ImageDraw
+except ModuleNotFoundError:
+    raise SystemExit(
+        "error: needs Pillow. Run: uv run --with pillow tools/header_gif.py"
+    ) from None
 
 ROOT = Path(__file__).resolve().parent.parent
 W, H, SCALE = 224, 56, 4  # logical pixels, and screen pixels per logical pixel
@@ -77,4 +84,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli.run(main)

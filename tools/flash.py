@@ -24,6 +24,7 @@ import argparse
 import sys
 import time
 
+import cli
 import mido
 import serial
 from fwcrypt import cbc_decrypt, cbc_encrypt
@@ -65,7 +66,9 @@ def enter_update_mode(wait: float = 15.0) -> str:
     name = midi_out_name()
     if not name:
         sys.exit(
-            "synth not found. Power it on, or hold OSC + SETTINGS while powering on."
+            "error: synth not found. Connect it over USB and switch it on.\n"
+            "       If the firmware on it has no USB (or has crashed), hold OSC + SETTINGS\n"
+            "       while switching it on to enter update mode by hand."
         )
     print(f"sending 'reboot to update mode' to {name}")
     with mido.open_output(name) as out:
@@ -77,12 +80,22 @@ def enter_update_mode(wait: float = 15.0) -> str:
             time.sleep(0.5)
             return dev
         time.sleep(0.2)
-    sys.exit("the bootloader's serial port did not appear")
+    sys.exit(
+        f"error: sent the command to {name}, but the bootloader's serial port did not\n"
+        f"       appear within {wait:.0f} s. Hold OSC + SETTINGS while switching the synth on\n"
+        "       to enter update mode by hand, then run this again."
+    )
 
 
 class Boot:
     def __init__(self, dev: str):
-        self.s = serial.Serial(dev, 115200, timeout=3)
+        try:
+            self.s = serial.Serial(dev, 115200, timeout=3)
+        except (serial.SerialException, OSError) as e:
+            sys.exit(
+                f"error: cannot open {dev}: {e}\n"
+                "       Another program (SynthTribe, a serial monitor) may have it open."
+            )
 
     def ack(self, what: str, timeout: float | None = None) -> None:
         if timeout:
@@ -104,13 +117,21 @@ class Boot:
     def get_id(self) -> bytes:
         self.cmd(0x02, "get id")
         d = self.s.read(3)
+        if len(d) != 3:
+            raise RuntimeError(
+                f"get id: expected 3 bytes, got {d.hex(' ') or 'nothing'}"
+            )
         self.ack("get id end")
         return d
 
     def info(self) -> bytes:
         self.cmd(0xAA, "info")
-        n = self.s.read(1)[0]
-        d = self.s.read(n)
+        n = self.s.read(1)
+        if not n:
+            raise RuntimeError("info: no reply")
+        d = self.s.read(n[0])
+        if len(d) != n[0]:
+            raise RuntimeError(f"info: expected {n[0]} bytes, got {len(d)}")
         self.ack("info end")
         return d
 
@@ -138,12 +159,12 @@ class Boot:
             chip, info = self.get_id(), self.info()
         except (serial.SerialException, RuntimeError, OSError) as e:
             sys.exit(
-                f"the bootloader on {self.s.port} does not answer ({e}). Switch the synth "
-                "off and on, then try again. Nothing was erased."
+                f"error: the bootloader on {self.s.port} does not answer ({e}).\n"
+                "       Switch the synth off and on, then try again. Nothing was erased."
             )
         if chip != CHIP_ID or not info.startswith(INFO_PREFIX):
             sys.exit(
-                f"refusing: {self.s.port} does not answer like a JT-4000 bootloader "
+                f"error: {self.s.port} does not answer like a JT-4000 bootloader "
                 f"(chip id {chip.hex(' ')}, info {info!r}). Nothing was erased."
             )
         return chip, info
@@ -159,7 +180,10 @@ class Boot:
             return
         if reply and reply != bytes([ACK]):
             what = "NACK" if reply == bytes([NACK]) else reply.hex()
-            sys.exit(f"the bootloader refused to start the application ({what})")
+            sys.exit(
+                f"error: the bootloader refused to start the application ({what}).\n"
+                "       The image is written. Switch the synth off and on to start it."
+            )
 
 
 def wait_for_application(boot: Boot, wait: float = 8.0) -> None:
@@ -178,8 +202,8 @@ def wait_for_application(boot: Boot, wait: float = 8.0) -> None:
                 )
                 return
             sys.exit(
-                "the application did not start: the synth is still in update mode. "
-                "The image is written; power-cycle the synth, or flash again."
+                "error: the application did not start: the synth is still in update mode.\n"
+                "       The image is written. Switch the synth off and on, or flash again."
             )
         time.sleep(0.2)
     while time.monotonic() < deadline:
@@ -199,7 +223,11 @@ def load(path: str) -> bytes:
     with open(path, "rb") as f:
         raw = f.read()
     if len(raw) != SIZE:
-        sys.exit(f"{path}: expected {SIZE} bytes, got {len(raw)}")
+        sys.exit(
+            f"error: {path}: expected {SIZE} bytes, got {len(raw)}.\n"
+            "       This takes a complete image: a factory *_CRY_*.bin, or the .cry.bin that\n"
+            "       'make' writes. A raw linker output goes through 'fwpack.py build' first."
+        )
     plain, enc = cbc_decrypt(KEY, raw), raw
     if trailer(plain)[2] != MARKER:
         plain, enc = raw, cbc_encrypt(KEY, raw)
@@ -245,13 +273,24 @@ def cmd_flash(a) -> None:
     b = Boot(enter_update_mode())
     chip, info = b.identify()
     print(f"bootloader: {info.decode('ascii', 'replace')}, chip id {chip.hex(' ')}")
-    print("erasing application area ...")
-    b.erase()
-    t0 = time.monotonic()
-    for off in range(0, SIZE, CHUNK):
-        b.write(BASE + off, enc[off : off + CHUNK])
-        if off % 4096 == 0:
-            print(f"\rwriting {off:#7x} / {SIZE:#x}", end="", flush=True)
+    stage = "erasing"
+    try:
+        print("erasing application area ...")
+        b.erase()
+        t0 = time.monotonic()
+        for off in range(0, SIZE, CHUNK):
+            stage = f"writing at {BASE + off:#010x}"
+            b.write(BASE + off, enc[off : off + CHUNK])
+            if off % 4096 == 0:
+                print(f"\rwriting {off:#7x} / {SIZE:#x}", end="", flush=True)
+    except (serial.SerialException, RuntimeError, OSError, KeyboardInterrupt) as e:
+        why = "interrupted" if isinstance(e, KeyboardInterrupt) else str(e)
+        sys.exit(
+            f"\nerror: the flash stopped while {stage}: {why}\n"
+            "       The synth has no complete firmware now. This is recoverable: the\n"
+            "       bootloader is untouched and stays in update mode until a complete image\n"
+            "       is written. Switch the synth off and on, then run the same command again."
+        )
     print(f"\rwrote {SIZE:#x} bytes in {time.monotonic() - t0:.1f} s")
     b.go()
     wait_for_application(b)
@@ -271,4 +310,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli.run(main)

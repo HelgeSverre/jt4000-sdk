@@ -21,6 +21,7 @@ import argparse
 import sys
 import time
 
+import cli
 import mido
 
 MANUFACTURER = (0x00, 0x20, 0x32)  # Behringer / Music Tribe
@@ -52,11 +53,16 @@ def find_port(names: list[str], wanted: str | None) -> str:
         for n in names:
             if wanted.lower() in n.lower():
                 return n
-        sys.exit(f"no MIDI port matching {wanted!r}; available: {names}")
+        sys.exit(
+            f"error: no MIDI port matching {wanted!r}. Available: {names or 'none'}"
+        )
     for n in names:
         if any(h.lower() in n.lower() for h in PORT_HINTS):
             return n
-    sys.exit(f"JT-4000 not found; available: {names} (use --port)")
+    sys.exit(
+        f"error: JT-4000 not found among the MIDI ports: {names or 'none'}\n"
+        "       Connect it and switch it on (not in update mode), or name a port with --port."
+    )
 
 
 def open_ports(port: str | None):
@@ -67,7 +73,7 @@ def open_ports(port: str | None):
 
 def build(payload: list[int]) -> mido.Message:
     if any(b > 0x7F for b in payload):
-        sys.exit("SysEx payload bytes must be 0x00-0x7F")
+        sys.exit("error: SysEx payload bytes must be 00-7F")
     return mido.Message("sysex", data=[*HEADER, *payload])
 
 
@@ -105,7 +111,9 @@ def cmd_ports(_args) -> None:
 def cmd_version(args) -> None:
     reply = transact(args.port, [CMD_GET_FW_VERSION], args.timeout)
     if reply is None:
-        sys.exit("no reply")
+        sys.exit(
+            f"error: no reply within {args.timeout} s (is this the stock firmware?)"
+        )
     # Device replies 09 <xx> <major> <minor> <patch>. SynthTribe's handler gets
     # [xx, major, minor, patch] after the command byte and reads indices 1..3.
     # xx was 00 on a JT-4000 running 1.1.5 (likely device id / status).
@@ -116,7 +124,12 @@ def cmd_version(args) -> None:
 
 
 def cmd_send(args) -> None:
-    payload = [int(b, 16) for b in " ".join(args.bytes).replace(",", " ").split()]
+    try:
+        payload = [int(b, 16) for b in " ".join(args.bytes).replace(",", " ").split()]
+    except ValueError as e:
+        sys.exit(f"error: the payload must be hex bytes such as '08' or '01 7F' ({e})")
+    if not payload:
+        sys.exit("error: empty payload")
     reply = transact(args.port, payload, args.timeout)
     if reply is None:
         print("no reply")
@@ -185,10 +198,14 @@ def cmd_upload(args) -> None:
     with open(args.file, "rb") as f:
         raw = f.read()
     if raw[:1] != b"\xf0" or raw[-1:] != b"\xf7" or tuple(raw[1:7]) != HEADER:
-        sys.exit("not a JT-4000 SysEx file")
+        sys.exit(f"error: {args.file}: not a JT-4000 SysEx file")
     name = find_port(mido.get_output_names(), args.port)
     with mido.open_output(name) as out:
         for msg in mido.parse_all(raw):
+            if msg.type != "sysex" or len(msg.data) < 7:
+                sys.exit(
+                    f"error: {args.file}: contains something other than JT-4000 SysEx"
+                )
             print(f"-> {msg.type} {len(msg.bin())} bytes, cmd {msg.data[6]:02X}")
             out.send(msg)
             time.sleep(0.05)
@@ -240,4 +257,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli.run(main)

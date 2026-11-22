@@ -111,7 +111,7 @@ write to it; back up first, on stock firmware, with `uv run tools/sysex.py dump 
 | Path | Content |
 |---|---|
 | `sdk/` | The SDK, its examples and its own README |
-| `tools/` | `fwfetch.py` (download factory firmware), `flash.py` (flasher), `fwpack.py` (packaging, encryption), `emu.py` (simulator), `sysex.py` (talk to stock firmware), `riff.py` (MIDI file to riff for `examples/trance`) |
+| `tools/` | `fwfetch.py` (download factory firmware), `flash.py` (flasher), `fwpack.py` (packaging, encryption), `emu.py` (simulator), `sysex.py` (talk to stock firmware), `riff.py` (MIDI file to riff for `examples/trance`). They end with a one-line `error:` on failure; set `JT_DEBUG=1` for the traceback |
 | `docs/` | `HARDWARE.md` (pins, parts), `BOOTLOADER.md` (start-up rules, update protocol), `FIRMWARE.md` (image format, encryption), `SYSEX.md`, `FIRMWARE-MAP.md` (stock firmware internals, preset format, CC map) |
 | `firmware/` | Empty until you run `tools/fwfetch.py` (`--all --decrypt` for every version, decrypted, as the Ghidra scripts expect) |
 | `ghidra/` | Scripts and named symbols for reading the stock firmware |

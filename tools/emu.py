@@ -17,6 +17,15 @@ import itertools
 import struct
 import sys
 
+import cli
+
+try:
+    import unicorn  # noqa: F401
+except ModuleNotFoundError:
+    sys.exit(
+        "error: needs the 'unicorn' module. Run: uv run --with unicorn tools/emu.py ..."
+    )
+
 from unicorn import (
     UC_ARCH_ARM,
     UC_HOOK_BLOCK,
@@ -350,7 +359,21 @@ def main() -> None:
     p.add_argument("--wav", help="write the DAC output to this WAV file")
     a = p.parse_args()
     with open(a.image, "rb") as f:
-        b = Board(f.read(), a.osc, a.settings)
+        image = f.read()
+    if not 8 <= len(image) <= 0x18000:
+        sys.exit(
+            f"error: {a.image} is {len(image)} bytes; an application image is 8..98304"
+        )
+    sp, pc = struct.unpack_from("<2I", image)
+    if not (
+        0x20000000 <= sp <= 0x20008000 and FLASH <= pc < FLASH + 0x18000 and pc & 1
+    ):
+        sys.exit(
+            f"error: {a.image} does not start with a vector table (SP {sp:#x}, reset {pc:#x}).\n"
+            "       The simulator takes the plain image (build/<app>/<app>.bin), not the\n"
+            "       encrypted .cry.bin."
+        )
+    b = Board(image, a.osc, a.settings)
     if a.key or a.kb:
         b.pots[15] = 52
         b.kb = a.kb or 0x8000
@@ -390,4 +413,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli.run(main)

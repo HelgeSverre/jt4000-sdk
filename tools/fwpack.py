@@ -15,6 +15,7 @@ import hashlib
 import struct
 import sys
 
+import cli
 from fwcrypt import cbc_decrypt, cbc_encrypt
 
 KEY = b"-MakeLoveNotWar-"
@@ -64,19 +65,32 @@ def main() -> None:
         img = bytearray(f.read())
     if a.cmd == "build":
         if len(img) > TRAILER:
-            sys.exit(f"image is {len(img)} bytes; the limit is {TRAILER}")
+            sys.exit(
+                f"error: {a.plain} is {len(img)} bytes; the application area holds {TRAILER}. "
+                "The firmware is too big."
+            )
+        if len(img) < 8:
+            sys.exit(f"error: {a.plain} is {len(img)} bytes: not a firmware image")
         code = len(img)
         img += bytes(SIZE - len(img))
         # The bootloader sums bytes 0..length inclusive and needs 0x10000 <= length.
         struct.pack_into("<I", img, TRAILER, max((code + 3) & ~3, 0x10000))
         img[TRAILER + 8 : TRAILER + 12] = MARKER
         print(f"code {code} bytes ({code * 100 // TRAILER}% of flash)")
+    elif len(img) != SIZE:
+        sys.exit(
+            f"error: {a.plain} is {len(img)} bytes; '{a.cmd}' needs a complete {SIZE}-byte "
+            "plain image. Use 'build' for raw linker output."
+        )
     if a.cmd == "check":
         sys.exit(0 if check(img) else 1)
     if a.cmd == "patch-string":
         old, new = a.old.encode(), a.new.encode()
         if len(old) != len(new) or img.count(old) != 1:
-            sys.exit(f"need same length and exactly one match (found {img.count(old)})")
+            sys.exit(
+                f"error: the two strings must be the same length ({len(old)} and {len(new)}) "
+                f"and the old one must occur exactly once (found {img.count(old)})"
+            )
         at = img.index(old)
         img[at : at + len(old)] = new
         fix_trailer(img)
@@ -87,7 +101,7 @@ def main() -> None:
         return
     fix_trailer(img)
     if not check(img):
-        sys.exit("refusing to pack a bad image")
+        sys.exit("error: refusing to pack an image the bootloader would reject")
     enc = cbc_encrypt(KEY, bytes(img))
     assert cbc_decrypt(KEY, enc) == bytes(img)
     with open(a.out, "wb") as f:
@@ -96,4 +110,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli.run(main)

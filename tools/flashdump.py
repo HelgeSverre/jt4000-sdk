@@ -10,6 +10,7 @@ import argparse
 import sys
 import time
 
+import cli
 import mido
 from sysex import HEADER, checksum, open_ports
 
@@ -76,4 +77,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli.run(main)

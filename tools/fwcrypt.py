@@ -17,6 +17,8 @@ import argparse
 import struct
 import sys
 
+import cli
+
 M = 0xFFFFFFFF
 ROUNDS = 27
 IV = (0x11223344, 0x55667788)  # (y, x) as loaded from .rodata 0x2048
@@ -137,7 +139,13 @@ def show(plain: bytes) -> None:
 def cmd_try(a) -> None:
     with open(a.file, "rb") as f:
         data = f.read()
-    plain = cbc_decrypt(bytes.fromhex(a.key), data)
+    try:
+        key = bytes.fromhex(a.key)
+    except ValueError:
+        key = b""
+    if len(key) != 16:
+        sys.exit("error: --key must be 16 bytes as 32 hex digits")
+    plain = cbc_decrypt(key, data)
     show(plain)
     if a.out:
         with open(a.out, "wb") as f:
@@ -173,4 +181,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    cli.run(main)

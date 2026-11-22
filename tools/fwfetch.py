@@ -24,6 +24,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+import cli
+
 API = "https://cloud.midasconsoles.com/api/v2"
 CLIENT = "63dbaa87-15b1-4681-a47f-34ea5bfd10df"  # SynthTribe's client id
 MODEL = "behringer/jt-4000-micro/jt-4000-micro"
@@ -48,7 +50,30 @@ SECRET = (
 
 
 def secret() -> bytes:
-    return bytes.fromhex(os.environ.get("JT_CLOUD_SECRET", SECRET))
+    try:
+        return bytes.fromhex(os.environ.get("JT_CLOUD_SECRET", SECRET))
+    except ValueError:
+        sys.exit("error: JT_CLOUD_SECRET must be hex digits (1024 of them)")
+
+
+def fetch(url: str | urllib.request.Request, what: str, timeout: float) -> bytes:
+    host = urllib.request.Request(url).host if isinstance(url, str) else url.host
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            return r.read()
+    except urllib.error.HTTPError as e:
+        sys.exit(
+            f"error: {what}: HTTP {e.code} from {host}: "
+            f"{e.read()[:200].decode(errors='replace')}"
+        )
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        hint = ""
+        if "CERTIFICATE" in str(e).upper():
+            hint = (
+                "\n       A proxy that intercepts HTTPS (Proxyman, Charles) causes this. "
+                "Quit it, or run with no_proxy='*'."
+            )
+        sys.exit(f"error: {what}: cannot reach {host}: {getattr(e, 'reason', e)}{hint}")
 
 
 def call(path: str, body: dict | None = None, token: str | None = None):
@@ -60,11 +85,11 @@ def call(path: str, body: dict | None = None, token: str | None = None):
         data = json.dumps(body).encode()
         headers["Content-Type"] = "application/json"
     req = urllib.request.Request(API + path, data=data, headers=headers)
+    raw = fetch(req, path, 30)
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            return json.load(r)
-    except urllib.error.HTTPError as e:
-        sys.exit(f"{path}: HTTP {e.code} {e.read()[:200].decode(errors='replace')}")
+        return json.loads(raw)
+    except ValueError:
+        sys.exit(f"error: {path}: the server did not answer with JSON: {raw[:120]!r}")
 
 
 def login(key: bytes) -> str:
@@ -72,12 +97,12 @@ def login(key: bytes) -> str:
     c = ch["client"]
     if hashlib.sha256(key + bytes.fromhex(c["proofSalt"])).hexdigest() != c["proof"]:
         sys.exit(
-            "the server's proof does not match: wrong secret, or the handshake changed"
+            "error: the server's proof does not match: wrong secret, or the handshake changed"
         )
     answer = hashlib.sha256(key + bytes.fromhex(c["salt"])).hexdigest()
     r = call(ch["responsePath"], {"clientResponse": answer})
     if not r.get("success"):
-        sys.exit(f"login refused: {r}")
+        sys.exit(f"error: login refused: {r}")
     return r["token"]
 
 
@@ -87,11 +112,11 @@ def download(rec: dict, out: Path) -> Path:
         print(f"{rec['version']}: {dst} already there")
         return dst
     # The link is pre-signed and short-lived; it takes no extra headers.
-    with urllib.request.urlopen(rec["s3Url"], timeout=60) as r:
-        blob = r.read()
+    blob = fetch(rec["s3Url"], rec["filename"], 60)
     if hashlib.md5(blob).hexdigest() != rec["checksum"] or len(blob) != rec["bytes"]:
         sys.exit(
-            f"{rec['version']}: downloaded file does not match the server's checksum"
+            f"error: {rec['version']}: the download ({len(blob)} bytes) does not match the "
+            "server's checksum. Try again."
         )
     out.mkdir(parents=True, exist_ok=True)
     dst.write_bytes(blob)
@@ -111,8 +136,15 @@ def main() -> None:
     p.add_argument("--out", type=Path, default=ROOT / "firmware")
     a = p.parse_args()
 
-    token = login(secret())
-    recs = call(f"/firmware/{MODEL}", token=token)
+    try:
+        token = login(secret())
+        recs = call(f"/firmware/{MODEL}", token=token)
+        recs[0]["version"], recs[0]["filename"], recs[0]["checksum"], recs[0]["s3Url"]
+    except (KeyError, IndexError, TypeError) as e:
+        sys.exit(
+            f"error: the update server answered in an unexpected shape ({type(e).__name__}: "
+            f"{e}).\n       Its API has probably changed; this script needs updating."
+        )
     if a.list:
         for r in recs:
             print(
@@ -134,4 +166,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli.run(main)
