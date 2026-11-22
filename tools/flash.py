@@ -34,14 +34,22 @@ from sysex import HEADER, PORT_HINTS
 ACK, NACK = 0x79, 0x1F
 BASE = 0x08008000
 CHUNK = 32
-VID = 0x1397  # Behringer
+VID, PID = 0x1397, 0x127E  # Behringer, "JT-4000 MICRO BOOTLOADER"
+CHIP_ID = bytes([0x01, 0x04, 0x21])
+INFO_PREFIX = (
+    b"BE_P0EJW_BOOT"  # the JT-4000 Micro's bootloader; a version digit follows
+)
 
 
 def find_serial() -> str | None:
-    for p in list_ports.comports():
-        if p.vid == VID:
-            return p.device
-    return None
+    """The JT-4000 bootloader's serial port. Other Behringer devices are ignored."""
+    found = [p.device for p in list_ports.comports() if (p.vid, p.pid) == (VID, PID)]
+    if len(found) > 1:
+        sys.exit(
+            f"{len(found)} JT-4000 bootloaders are connected ({', '.join(found)}). "
+            "Leave only the one to flash plugged in."
+        )
+    return found[0] if found else None
 
 
 def midi_out_name() -> str | None:
@@ -122,13 +130,52 @@ class Boot:
         self.s.write(bytes([len(data) - 1]) + data + bytes([x]))
         self.ack("write data")
 
+    def identify(self) -> tuple[bytes, bytes]:
+        """Sync and return (chip id, info), or stop if this is not a JT-4000 bootloader.
+        Nothing on the device has been changed when this refuses."""
+        self.sync()
+        chip, info = self.get_id(), self.info()
+        if chip != CHIP_ID or not info.startswith(INFO_PREFIX):
+            sys.exit(
+                f"refusing: {self.s.port} does not answer like a JT-4000 bootloader "
+                f"(chip id {chip.hex(' ')}, info {info!r}). Nothing was erased."
+            )
+        return chip, info
+
     def go(self) -> None:
-        """Start the application. The serial port vanishes as the synth re-enumerates,
-        so a missing ACK here is normal."""
+        """Start the application. The serial port usually vanishes before the ACK
+        arrives, so silence or a dropped port is fine; any other reply is a refusal."""
         try:
-            self.cmd(0x21, "go")
-        except (serial.SerialException, RuntimeError, OSError):
-            pass
+            self.s.write(b"\x21\xde")
+            self.s.timeout = 1
+            reply = self.s.read(1)
+        except (serial.SerialException, OSError):
+            return
+        if reply and reply != bytes([ACK]):
+            what = "NACK" if reply == bytes([NACK]) else reply.hex()
+            sys.exit(f"the bootloader refused to start the application ({what})")
+
+
+def wait_for_application(wait: float = 8.0) -> None:
+    """Confirm the bootloader has gone, then look for the synth's MIDI port."""
+    deadline = time.monotonic() + wait
+    while find_serial():
+        if time.monotonic() > deadline:
+            sys.exit(
+                "the application did not start: the synth is still in update mode. "
+                "The image is written; power-cycle the synth, or flash again."
+            )
+        time.sleep(0.2)
+    while time.monotonic() < deadline:
+        name = midi_out_name()
+        if name:
+            print(f"started the application: the synth is back as MIDI port '{name}'")
+            return
+        time.sleep(0.3)
+    print(
+        "started the application: the bootloader has gone. No MIDI port appeared, "
+        "which is normal for firmware that does not call jt_usb_init()."
+    )
 
 
 def load(path: str) -> bytes:
@@ -171,17 +218,17 @@ def load(path: str) -> bytes:
 
 def cmd_info(_a) -> None:
     b = Boot(enter_update_mode())
-    b.sync()
-    print("chip id:", b.get_id().hex(" "))
-    print("bootloader info:", b.info().hex(" "))
+    chip, info = b.identify()
+    print("chip id:", chip.hex(" "))
+    print("bootloader info:", info.decode("ascii", "replace"))
     print("left in update mode; power-cycle to return to the application")
 
 
 def cmd_flash(a) -> None:
     enc = load(a.file)
     b = Boot(enter_update_mode())
-    b.sync()
-    print("chip id:", b.get_id().hex(" "))
+    chip, info = b.identify()
+    print(f"bootloader: {info.decode('ascii', 'replace')}, chip id {chip.hex(' ')}")
     print("erasing application area ...")
     b.erase()
     t0 = time.monotonic()
@@ -191,7 +238,7 @@ def cmd_flash(a) -> None:
             print(f"\rwriting {off:#7x} / {SIZE:#x}", end="", flush=True)
     print(f"\rwrote {SIZE:#x} bytes in {time.monotonic() - t0:.1f} s")
     b.go()
-    print("started the application")
+    wait_for_application()
 
 
 def main() -> None:

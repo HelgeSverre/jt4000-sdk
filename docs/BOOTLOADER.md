@@ -88,7 +88,7 @@ In update mode the bootloader is a USB serial port (vendor ID `0x1397`). The pro
 
 **Verified (2026-11-21):** `tools/flash.py flash firmware/JT-4000_INTFLASH_CRY_V115.bin` erased, wrote all 98,304 bytes in 2.9 s and started the application; the synth came back as a MIDI device reporting 1.1.5 with the normal preset-dump command restored. The serial port disappears as soon as Go is accepted, so the final ACK is usually not seen.
 
-`tools/flash.py` implements this: `info` (enter update mode, print ID and info) and `flash <image>` (check the trailer the way the bootloader will, erase, write, go). It refuses images the bootloader would reject.
+`tools/flash.py` implements this: `info` (enter update mode, print ID and info) and `flash <image>` (check the trailer the way the bootloader will, erase, write, go). It refuses images the bootloader would reject. Before erasing it requires USB ID `1397:127E`, chip ID `01 04 21` and an info string starting `BE_P0EJW_BOOT`; after Go it waits for the bootloader's serial port to disappear and reports the MIDI port the synth comes back as.
 
 ## Not yet analysed
 
