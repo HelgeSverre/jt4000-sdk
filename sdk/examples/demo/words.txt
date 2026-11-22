@@ -1,0 +1,21 @@
+# What the demo says.
+#   just words demo --rate 150
+[DEMO]
+HELLO
+HUMAN
+THIS
+IS
+CUSTOM
+FIRMWARE
+CODE
+WEE = wee
+FREE
+AND
+OPEN
+SOURCE
+GET
+NOW
+YOU
+TOUCH
+THE
+KEYS

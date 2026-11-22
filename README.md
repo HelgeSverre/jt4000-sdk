@@ -28,6 +28,7 @@ make sim                      # build examples/hello and run it in the simulator
 make flash                    # build and flash it to the synth
 make APP=soundbox flash       # an ambient sound box: plays itself; six buttons, two knobs, pictures, no menus
 make APP=trance flash         # supersaw, trance gate, built-in riffs
+make APP=demo flash           # a minute and a half of music, pictures and speech, then a synth to play
 make APP=acid flash           # a 303-style bassline machine: accent, slide, a ladder filter or the real analog one
 make APP=choir flash          # frozen speech as a pad: park inside a word, four voices sing what is there
 make APP=drone flash          # a drone you sculpt: 16 keys are 16 partials, six pages, 16 scenes that morph
