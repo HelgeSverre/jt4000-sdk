@@ -336,8 +336,8 @@ static void render(int16_t *out, int n) {
 }
 
 /* ---- keys, from the touch keyboard and from MIDI ---- */
-static void irq_off(void) { __asm__ volatile("cpsid i"); }
-static void irq_on(void) { __asm__ volatile("cpsie i"); }
+static void irq_off(void) { jt_irq_off(); }
+static void irq_on(void) { jt_irq_on(); }
 
 /* Without latch the riff or arpeggio runs while keys are down. With latch it keeps going
  * after you let go: a riff follows the last key, an arpeggio keeps its chord until you

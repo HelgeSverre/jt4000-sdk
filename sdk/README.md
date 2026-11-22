@@ -73,6 +73,13 @@ The DAC feeds the analog filter, so digital effects sit *before* it: closing the
 
 Describe up to six pages (one per panel button) as tables of items that point at your `int16_t` variables; call `jt_menu_poll()` every 10 ms. Turn SELECT to choose, press to edit. See `examples/trance`.
 
+## On the computer
+
+`make host APP=name` builds a firmware as a shared library for this computer, with
+`host/host.c` standing in for the hardware; `uv run --with pygame-ce --with sounddevice
+--with numpy ../tools/panel.py name` shows it in a window that looks like the synth and
+plays it. See the main README.
+
 ## Examples
 
 | Example | Shows |
@@ -81,6 +88,10 @@ Describe up to six pages (one per panel button) as tables of items that point at
 | `tone` | one oscillator, keyboard, USB MIDI notes and CCs |
 | `soundbox` | an ambient sound box with no text: a generator plays notes from a scale, six buttons open six animated scenes, the two knobs shape the open one; echo, grains, reverb, boot animation |
 | `trance` | seven-saw supersaw, trance gate, tempo-synced delay, presets, built-in riffs and arpeggiator that follow the held key; `tools/riff.py` imports MIDI files as extra riffs |
+| `acid` | a bassline machine in the manner of the TB-303: 16 steps with accent, slide and octave, a four-pole ladder filter with the envelope applied per sample or the synth's analog filter driven by the same envelope, 16 sounds, kick and hat, random evolution with undo; controls in `examples/acid/README.md` |
+| `choir` | frozen speech as a pad: a knob moves through an LPC word and stops anywhere, up to four voices sing the mouth shape found there; the display draws the vocal tract as a tube from the reflection coefficients; uses the frame-level API of `jt_lpc.h` |
+| `drone` | an additive drone that always sounds: 16 sine partials per note, the 16 keys edit them, six pages with a picture each, a pulse sequencer on the analog filter, 16 scenes that morph into each other; controls in `examples/drone/README.md` |
+| `groove` | a six-track groovebox: synthesized kick, snare and hat, an acid bass with accent and slide, a lead and an LPC voice track; 16 keys are 16 steps, 16 patterns, tracks that evolve at random with undo, the analog filter over the mix; controls in `examples/groove/README.md` |
 | `speak` | a talking typewriter: 267 words of LPC speech (the Speak & Spell method) that can be said at any note, chained into a sentence, edited with a cursor and played back; a two-row display, debounced buttons, a voice settings page; controls in `examples/speak/README.md` |
 
 ## Rules the bootloader imposes

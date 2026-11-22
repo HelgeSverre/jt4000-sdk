@@ -28,6 +28,10 @@ make sim                      # build examples/hello and run it in the simulator
 make flash                    # build and flash it to the synth
 make APP=soundbox flash       # an ambient sound box: plays itself; six buttons, two knobs, pictures, no menus
 make APP=trance flash         # supersaw, trance gate, built-in riffs
+make APP=acid flash           # a 303-style bassline machine: accent, slide, a ladder filter or the real analog one
+make APP=choir flash          # frozen speech as a pad: park inside a word, four voices sing what is there
+make APP=drone flash          # a drone you sculpt: 16 keys are 16 partials, six pages, 16 scenes that morph
+make APP=groove flash         # a six-track groovebox: 16 keys are 16 steps; drums, acid bass, lead, a voice
 make APP=speak flash          # a talking typewriter: Speak & Spell style speech, sung at any note
 make new APP=mysynth          # start your own from examples/hello
 ```
@@ -46,6 +50,30 @@ uv run tools/flash.py flash firmware/JT-4000_INTFLASH_CRY_V115.bin
 The factory firmware is Behringer's and is not part of this repository. `fwfetch.py`
 downloads it from Music Tribe's update server the way SynthTribe does. Fetch it once,
 before you flash anything else, so the way back is on your disk.
+
+With [`just`](https://github.com/casey/just) installed, the same things are `just flash groove`, `just host groove`, `just stock` (back to the factory firmware) and so on; `just` on its own lists them.
+
+## Try it without the synth
+
+`tools/panel.py` compiles a firmware's source for your computer and runs it in a window
+drawn after the instrument, with sound. Click and drag the controls, press P for a
+screenshot and R to record a video.
+
+```sh
+uv run --with pygame-ce --with sounddevice --with numpy tools/panel.py groove
+uv run --with pygame-ce --with numpy tools/panel.py choir --ms 8000 --video choir.mp4    # no window: straight to a file
+```
+
+| | |
+|---|---|
+| ![groove](docs/shots/groove.png) `groove` | ![acid](docs/shots/acid.png) `acid` |
+| ![drone](docs/shots/drone.png) `drone` | ![choir](docs/shots/choir.png) `choir` |
+| ![speak](docs/shots/speak.png) `speak` | ![soundbox](docs/shots/soundbox.png) `soundbox` |
+
+The window is for playing, demos and pictures. It is the firmware's real code, but not the
+real hardware: the analog filter is a digital stand-in and USB is absent. `tools/emu.py`
+runs the actual ARM binary, slowly and without a window, and is the one to trust about
+timing; the synth is the one to trust about sound.
 
 ## A firmware in twenty lines
 
@@ -112,7 +140,7 @@ write to it; back up first, on stock firmware, with `uv run tools/sysex.py dump 
 | Path | Content |
 |---|---|
 | `sdk/` | The SDK, its examples and its own README |
-| `tools/` | `fwfetch.py` (download factory firmware), `flash.py` (flasher), `fwpack.py` (packaging, encryption), `emu.py` (simulator), `sysex.py` (talk to stock firmware), `riff.py` (MIDI file to riff for `examples/trance`), `lpcwords.py` (word list to LPC speech for `examples/speak`). They end with a one-line `error:` on failure; set `JT_DEBUG=1` for the traceback |
+| `tools/` | `fwfetch.py` (download factory firmware), `flash.py` (flasher), `fwpack.py` (packaging, encryption), `emu.py` (simulator), `sysex.py` (talk to stock firmware), `riff.py` (MIDI file to riff for `examples/trance`), `lpcwords.py` (word list to LPC speech for `examples/speak`), `panel.py` (the synth in a window). They end with a one-line `error:` on failure; set `JT_DEBUG=1` for the traceback |
 | `docs/` | `HARDWARE.md` (pins, parts), `BOOTLOADER.md` (start-up rules, update protocol), `FIRMWARE.md` (image format, encryption), `SYSEX.md`, `FIRMWARE-MAP.md` (stock firmware internals, preset format, CC map) |
 | `firmware/` | Empty until you run `tools/fwfetch.py` (`--all --decrypt` for every version, decrypted, as the Ghidra scripts expect) |
 | `ghidra/` | Scripts and named symbols for reading the stock firmware |

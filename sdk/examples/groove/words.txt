@@ -1,0 +1,26 @@
+# Vocal chops for the groove firmware's voice track.
+#   uv run --with numpy tools/lpcwords.py --list sdk/examples/groove/words.txt --out sdk/examples/groove/words.h
+[VOX]
+HEY
+YEAH
+GO
+UP
+DOWN
+NOW
+OH
+AH
+ACID
+BASS
+BEAT
+DRUM
+DANCE
+MOVE
+JACK
+HOUSE
+TECHNO
+BODY
+FEEL
+ONE
+TWO
+THREE
+FOUR

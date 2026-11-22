@@ -1,0 +1,37 @@
+# Words the choir can be parked inside.
+#   uv run --with numpy tools/lpcwords.py --list sdk/examples/choir/words.txt --out sdk/examples/choir/words.h --rate 110
+[CHOIR]
+AH = ah
+EE = ee
+OH = oh
+OO = ooh
+ALLELUIA
+AMEN
+GLORIA
+AVE
+MARIA
+KYRIE
+SANCTUS
+HOLY
+ANGEL
+HEAVEN
+ETERNAL
+FOREVER
+DREAM
+GHOST
+SPIRIT
+VOICE
+SYNTHESIZER
+WAVEFORM
+HUMAN
+MACHINE
+MOON
+OCEAN
+ALONE
+HOME
+LOVE
+WHY
+YOU
+HELLO
+ZERO
+ONE

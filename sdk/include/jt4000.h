@@ -90,6 +90,14 @@ int jt_keyboard_lowest(uint16_t bits);        /* index of the lowest held key, o
 #define JT_AUDIO_BLOCK 64
 typedef void (*jt_audio_fn)(int16_t *out, int n);
 void jt_audio_init(jt_audio_fn render);           /* not part of jt_init: call when you want sound */
+/* Around a change the audio interrupt must see whole (starting a note: several fields). */
+#ifdef JT_HOST
+void jt_irq_off(void);
+void jt_irq_on(void);
+#else
+static inline void jt_irq_off(void) { __asm__ volatile("cpsid i"); }
+static inline void jt_irq_on(void) { __asm__ volatile("cpsie i"); }
+#endif
 void jt_filter(uint16_t cutoff, uint16_t resonance);   /* each 0..1000 */
 
 /* ---- SELECT knob (rotary encoder) ---- */

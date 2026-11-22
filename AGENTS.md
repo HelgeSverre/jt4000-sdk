@@ -78,10 +78,24 @@ the channels were mislabelled.
 Every wait on hardware has a bound (`for (i = 0; i < N && !ready; i++)`). An unbounded
 wait turns a small bug into a synth that looks dead.
 
+## Two ways to run without the synth
+
+- `tools/emu.py` (`make sim`) runs the ARM binary you will flash, about five times slower
+  than real time, and prints the display as text. Use it to prove a build works.
+- `tools/panel.py <app>` compiles the same source for the computer (`make host`, with
+  `sdk/host/host.c` in place of the drivers) and shows it in a window with sound, or
+  renders a picture or video: `--ms 5000 --script "..." --video out.mp4`. Use it to hear a
+  change quickly and to make pictures for a README. Its analog filter is an approximation,
+  it has no USB, and code that only breaks on ARM will not break there.
+
+Both take the same `--script`. Firmware must build for both: no ARM assembly in an
+example (use `jt_sqrt`, `jt_irq_off`, `jt_irq_on`), and a main loop that calls
+`jt_delay_ms` or `jt_oled_flush` every turn.
+
 ## What the simulator does and does not show
 
 `tools/emu.py` models the CPU, display, lights, buttons, touch keyboard and the audio
-path; the knobs read as fixed values (`--cutoff`, `--resonance`). USB and exact timing are outside it: USB code is tested on the synth only,
+path; the knobs read as fixed values (`--cutoff`, `--resonance`). `--script` presses buttons, turns SELECT, touches keys and prints the display at set times, e.g. `--script "500 tap=lfo; 700 enc+16; 900 key=3; 1000 shot"`; use it to check every page of a firmware. USB and exact timing are outside it: USB code is tested on the synth only,
 and a display routine that is fast in the simulator may still be slow on hardware. Read
 `uv run --with unicorn ../tools/emu.py --help` for the inputs you can hold.
 

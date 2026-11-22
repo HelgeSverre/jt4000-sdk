@@ -16,6 +16,7 @@ import argparse
 import itertools
 import struct
 import sys
+from typing import ClassVar
 
 import cli
 
@@ -137,6 +138,13 @@ class Board:
         self.audio_ms = 0  # simulated time covered by delivered audio blocks
         self.kb = 0  # touch-keyboard bits returned on I2C bus 2
         self.kb_bit = -1
+        self.keys = 0  # scanned buttons, as the key chip's first byte (JT_KEY_* bits)
+        self.key_bit = -1
+        self.key_read = False
+        self.enc = 0  # SELECT knob count (TIM2)
+        self.adc_dma: tuple[int, int] | None = None  # ADC sequence register, DMA target
+        self.events: list[tuple[int, str]] = []  # (ms, action), sorted
+        self.shots: list[tuple[int, str]] = []
         self.pwm: dict[str, int] = {}
         self.leds: tuple[int, int] | None = None
         self.reset = False
@@ -188,6 +196,8 @@ class Board:
             self.w32(addr, 1)
             if len(self.dac) % 32 == 31:
                 self.ms += 1
+        elif addr == 0x40000024:  # TIM2 CNT: the SELECT knob
+            self.w32(addr, self.enc)
         elif addr == SYST_CSR:
             csr = self.r32(SYST_CSR)
             if csr & 1:
@@ -221,6 +231,23 @@ class Board:
                     new >> 7 & 1,
                     new >> 8 & 1,
                 )
+                if scl_o and scl_n and sda_o and not sda_n:
+                    self.key_bit, self.key_read = -1, False  # START
+                elif scl_o and not scl_n and self.key_bit < 80:
+                    # The LED/key chip: acknowledge every byte; on a read, answer with the
+                    # key-scan bytes (the first holds the buttons, the rest are zero).
+                    self.key_bit += 1
+                    n, out = self.key_bit, 1
+                    if n == 8:
+                        bits = self.i2c_bits[:8]
+                        self.key_read = len(bits) == 8 and bits[7] == 1
+                        out = 0
+                    elif self.key_read and n > 8 and (n - 9) % 9 < 8:
+                        byte = self.keys if n < 18 else 0
+                        out = byte >> (7 - (n - 9) % 9) & 1
+                    elif not self.key_read and n % 9 == 8:
+                        out = 0
+                    self.idr[GPIOB] = (self.idr[GPIOB] & ~0x80) | out << 7
                 if scl_o and scl_n and sda_o != sda_n:
                     if sda_n and len(self.i2c) == 18 and self.i2c[:2] == [0xE0, 0x00]:
                         leds = (
@@ -289,13 +316,21 @@ class Board:
                 self.r32(ADC1 + 0x30),
                 self.r32(0x40020028),
             )  # sequence, DMA1 ch2 target
-            for i in range((sqr & 15) + 1):
-                ch = sqr >> (6 + 6 * i) & 31
-                self.uc.mem_write(dst + 2 * i, struct.pack("<H", self.pots.get(ch, 0)))
+            self.adc_dma = (sqr, dst)
+            self.adc_refresh()
         if addr == AIRCR and value & 4:
             self.reset = True
             self.log.append(f"{self.ms:5d} ms  system reset requested")
             uc.emu_stop()
+
+    def adc_refresh(self) -> None:
+        """Put the knob readings where the firmware's ADC DMA transfer leaves them."""
+        if not self.adc_dma:
+            return
+        sqr, dst = self.adc_dma
+        for i in range((sqr & 15) + 1):
+            ch = sqr >> (6 + 6 * i) & 31
+            self.uc.mem_write(dst + 2 * i, struct.pack("<H", self.pots.get(ch, 0)))
 
     def on_block(self, uc, addr, size, user):
         if self.irq_bytes is not None:
@@ -322,10 +357,58 @@ class Board:
         self.audio_ms += 2
         return True
 
+    BUTTONS: ClassVar[dict[str, int]] = {
+        "lfo": 1,
+        "filter": 2,
+        "amp": 4,
+        "arp": 8,
+        "select": 0x20,
+    }
+
+    def act(self, action: str) -> None:
+        """One scripted input: +lfo, -lfo, enc+16, kb=8000, key=3, cutoff=2000, shot."""
+        name = action.lstrip("+-")
+        down = action.startswith("+")
+        if action == "shot":
+            self.shots.append((self.ms, self.oled.render()))
+        elif action.startswith("enc"):
+            self.enc = (self.enc + int(action[3:])) & 0xFFFFFFFF
+        elif action.startswith("kb="):
+            self.kb = int(action[3:], 16)
+            self.pots[15] = 52 if self.kb else 4095
+        elif action.startswith(
+            "key="
+        ):  # touch keys by number, 0 = lowest; "key=" lets go
+            self.kb = sum(0x8000 >> int(k) for k in action[4:].split("+") if k)
+            self.pots[15] = 52 if self.kb else 4095
+        elif action.startswith("cutoff="):
+            self.pots[3] = int(action[7:])
+        elif action.startswith("resonance="):
+            self.pots[4] = int(action[10:])
+        elif name in self.BUTTONS:
+            self.keys = (
+                self.keys | self.BUTTONS[name]
+                if down
+                else self.keys & ~self.BUTTONS[name]
+            )
+        elif name == "osc":
+            self.idr[GPIOB] = (
+                self.idr[GPIOB] & ~0x10 if down else self.idr[GPIOB] | 0x10
+            )
+        elif name == "settings":
+            self.idr[GPIOA] = (
+                self.idr[GPIOA] & ~0x400 if down else self.idr[GPIOA] | 0x400
+            )
+        else:
+            sys.exit(f"error: --script: unknown action '{action}'")
+        self.adc_refresh()
+
     def run(self, ms: int) -> None:
         pc = self.entry
         try:
             while self.ms < ms and not self.reset:
+                while self.events and self.events[0][0] <= self.ms:
+                    self.act(self.events.pop(0)[1])
                 before = self.ms
                 self.uc.emu_start(pc | 1, 0xFFFFFFFE, count=200_000)
                 pc = self.uc.reg_read(UC_ARM_REG_PC)
@@ -358,6 +441,14 @@ def main() -> None:
     )
     p.add_argument("--wav", help="write the DAC output to this WAV file")
     p.add_argument(
+        "--script",
+        default="",
+        help="timed inputs, 'ms action' separated by ';'. Actions: +lfo -lfo (press, release; "
+        "also filter amp arp select osc settings), tap=lfo (press for 80 ms), enc+16 enc-8 "
+        "(turn SELECT; 8 counts is one step in the examples), key=3 or key=0+4 (touch keys, "
+        "0 = lowest; 'key=' lets go), cutoff=2000 resonance=0 (knobs), shot (print the display)",
+    )
+    p.add_argument(
         "--cutoff", type=int, help="CUTOFF knob reading, 0..4095 (default 4095)"
     )
     p.add_argument(
@@ -380,6 +471,17 @@ def main() -> None:
             "       encrypted .cry.bin."
         )
     b = Board(image, a.osc, a.settings)
+    for item in filter(None, (x.strip() for x in a.script.split(";"))):
+        try:
+            when, action = item.split()
+            at = int(when)
+        except ValueError:
+            sys.exit(f"error: --script: '{item}' is not 'ms action'")
+        if action.startswith("tap="):
+            b.events += [(at, "+" + action[4:]), (at + 80, "-" + action[4:])]
+        else:
+            b.events.append((at, action))
+    b.events.sort(key=lambda e: e[0])
     if a.cutoff is not None:
         b.pots[3] = max(0, min(4095, a.cutoff))
     if a.resonance is not None:
@@ -415,9 +517,10 @@ def main() -> None:
                 w.setframerate(32000)
                 w.writeframes(b"".join(struct.pack("<h", s - 0x8000) for s in b.dac))
             print("wrote", a.wav)
-    print("+" + "-" * 128 + "+")
-    for line in o.render().splitlines() or [""]:
-        print("|" + line.ljust(128) + "|")
+    for when, picture in [*b.shots, (b.ms, o.render())]:
+        print(f"+{f' {when} ms ':-^128}+")
+        for line in picture.splitlines() or [""]:
+            print("|" + line.ljust(128) + "|")
     print("+" + "-" * 128 + "+")
     sys.exit(0)
 

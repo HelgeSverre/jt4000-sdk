@@ -16,6 +16,15 @@ float jt_note_hz(float note);              /* MIDI note number (69 = 440 Hz), fr
 float jt_sin(float phase);                 /* sine of a 0..1 phase (one cycle) */
 float jt_rand(void);                       /* white noise, -1..1 */
 float jt_softclip(float x);                /* smooth limit to -1..1 */
+#ifdef JT_HOST
+static inline float jt_sqrt(float x) { return __builtin_sqrtf(x); }
+#else
+static inline float jt_sqrt(float x) {     /* the FPU's own square root: one instruction */
+    float r;
+    __asm__("vsqrt.f32 %0, %1" : "=t"(r) : "t"(x));
+    return r;
+}
+#endif
 
 /* ---- oscillator ---- */
 enum { JT_WAVE_SAW, JT_WAVE_SQUARE, JT_WAVE_TRIANGLE, JT_WAVE_SINE, JT_WAVE_NOISE, JT_WAVES };

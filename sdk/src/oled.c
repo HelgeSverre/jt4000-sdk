@@ -1,8 +1,13 @@
 /* SSD1306 128x32 over bit-banged SPI. The initialisation commands are the ones the
  * stock firmware sends (its routine at 0x080172C8). */
 #include "jt4000.h"
-#include "regs.h"
 #include "../third_party/font8x8_basic.h"
+
+#ifdef JT_HOST
+uint8_t jt_oled_fb[JT_OLED_W * JT_OLED_H / 8];      /* the host build shows this in a window (host/host.c) */
+#define fb jt_oled_fb
+#else
+#include "regs.h"
 
 #define PIN(n) (1u << (n))
 #define RST PIN(5)
@@ -49,6 +54,8 @@ void jt_oled_init(void) {
     jt_oled_flush();
 }
 
+#endif /* !JT_HOST */
+
 void jt_oled_clear(void) {
     for (unsigned i = 0; i < sizeof fb; i++) fb[i] = 0;
 }
@@ -94,6 +101,7 @@ void jt_oled_text_big(int x, int y, const char *s, int scale) {
     }
 }
 
+#ifndef JT_HOST
 void jt_oled_invert(bool on) { cmd(on ? 0xA7 : 0xA6); }
 
 void jt_oled_flush(void) {
@@ -107,3 +115,4 @@ void jt_oled_flush(void) {
         GPIOA->BSRR = CS;
     }
 }
+#endif

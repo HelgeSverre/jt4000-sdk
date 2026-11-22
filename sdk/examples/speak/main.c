@@ -46,11 +46,7 @@ static const struct { const char *name; int8_t min, max; } SETTING[SETTINGS] = {
 };
 static volatile int8_t setting[SETTINGS];
 
-static inline float fsqrt(float x) {
-    float r;
-    __asm__("vsqrt.f32 %0, %1" : "=t"(r) : "t"(x));
-    return r;
-}
+#define fsqrt jt_sqrt
 
 /* ---- the speech engine: runs in the audio interrupt ---- */
 static struct {

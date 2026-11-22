@@ -147,15 +147,15 @@ static void voice_off(int key) {
 }
 
 void note_on(int key, int velocity) {               /* from the main loop (and the intro) */
-    __asm__ volatile("cpsid i");
+    jt_irq_off();
     voice_on(key, velocity);
-    __asm__ volatile("cpsie i");
+    jt_irq_on();
 }
 
 void note_off(int key) {
-    __asm__ volatile("cpsid i");
+    jt_irq_off();
     voice_off(key);
-    __asm__ volatile("cpsie i");
+    jt_irq_on();
 }
 
 /* ---- the generator: now and then, a note from the scale near the home note ---- */
