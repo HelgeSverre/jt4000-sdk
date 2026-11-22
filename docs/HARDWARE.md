@@ -25,12 +25,12 @@ The photos this was read from are not in the repository.
 Reddit r/synthdiy thread "Behringer JT4000 Micro PCB - Any idea what the solder points on the bottom left do?" (post `19elfjr`, 2024; full-resolution photos at `preview.redd.it/wort6qmy1fec1.jpg`, `…/qzc5m69z1fec1.jpg`):
 
 - Commenters identify X4 as the MCU programming header. One repair technician notes that Behringer labels its test points `TP…`, so X4 isn't one of them.
-- **u/Bi0hAzArD105:** "I was able to connect it using a cheap stlink v2 but it's read protected." That means SWD on X4 works and **RDP is at level 1**: the debugger connects (so not RDP 2), but flash reads are blocked. One person's report, not yet re-checked.
+- **u/Bi0hAzArD105:** "I was able to connect it using a cheap stlink v2 but it's read protected." That means SWD on X4 works and **RDP is at level 1**: the debugger connects (so not RDP 2), but flash reads are blocked. Re-checked on 2026-11-21: the option bytes read RDP level 1 (see "Debug probe query").
 - The keyboard section is held to the case by strong double-sided tape, and two screws hold the PCB.
 
 ## Debug access
 
-- **X4:** 6-pad header at the bottom-left edge of the front side; pad 1 is square, on the left, with a ▲ marker below it. SWD over X4 works, according to a Reddit report (see above). The pinout isn't verified: trace each pad to U1 with a continuity meter. On the LQFP32 G431, PA13 = SWDIO and PA14 = SWCLK.
+- **X4:** 6-pad header at the bottom-left edge of the front side; pad 1 is square, on the left, with a ▲ marker below it. SWD over X4 works (Reddit report above, and the debug probe query below). Pads 1–4 are identified below; pads 5 and 6 are unknown, and no pad has been traced to U1 with a continuity meter. On the LQFP32 G431, PA13 = SWDIO and PA14 = SWCLK.
 - **U1 pins to trace X4 against** (LQFP32, datasheet DS12589 section 4.2; pin 1 is at the dot):
 
   | Pin | Signal | Use |
@@ -59,7 +59,7 @@ Capture `captures/x4-poweron.sal`: analog + digital on all six pads through powe
 | 5 | 0.01 V | no activity | unknown. Not an active-low reset held low, since the synth booted. Possibly unconnected, or the lead wasn't touching |
 | 6 | 0.01 V | no activity while the display redrew | unknown; not the display clock |
 
-Pads 1–4 match ST's standard layout (VDD, SWCLK, GND, SWDIO). Pads 2, 5 and 6 read alike, so pad 2 as SWCLK rests on the layout convention until a debug probe connects.
+Pads 1–4 match ST's standard layout (VDD, SWCLK, GND, SWDIO). Pads 2, 5 and 6 read alike, so the voltages alone don't identify pad 2. The debug probe in the next section confirmed it as SWCLK.
 
 ### Debug probe query (Raspberry Pi Debug Probe + OpenOCD 0.12.0, 2026-11-21)
 
@@ -69,17 +69,19 @@ Wiring: probe D port, black → pad 3, orange (clock) → pad 2, yellow (data) �
 |---|---|---|
 | SWD DPIDR | `0x2BA01477` | Cortex-M4 debug port |
 | `DBGMCU_IDCODE` | `0x20026468` | device ID `0x468` = STM32G431/G441 |
-| `FLASH_OPTR` | `0xFBEFF8BB` | **RDP byte `0xBB` = level 1** (not `AA` level 0, not `CC` level 2). `nSWBOOT0 = 0`, `nBOOT0 = 1`: the BOOT0 pin is ignored and the chip always boots from main flash, so ST's ROM bootloader can't be entered by a pin. This also frees PB8 for the EEPROM clock |
+| `FLASH_OPTR` | `0xFBEFF8BB` | **RDP byte `0xBB` = level 1**; `nSWBOOT0 = 0`, `nBOOT0 = 1` |
 | `FLASH_WRP1AR`, `WRP1BR` | `0xFFC0FFFF` both | start page `0x7F` > end page `0x40`: **no write-protected area**, the bootloader included |
 | `FLASH_PCROP1SR` / `1ER` | `0xFFFFFFFF` / `0x7FFFC000` | start > end: no execute-only (PCROP) area |
 | `FLASH_SEC1R` | `0xFFFEFF80` | size bits `[6:0] = 0`: no securable (hidden) area; `BOOT_LOCK = 0` |
+
+An RDP byte of `AA` would be level 0 and `CC` level 2. With `nSWBOOT0 = 0` and `nBOOT0 = 1` the BOOT0 pin is ignored and the chip always boots from main flash, so ST's ROM bootloader can't be entered by a pin. This also frees PB8 for the EEPROM clock.
 
 OpenOCD reported "clearing lockup after double fault": the application crashed when the debugger attached, as expected under RDP 1 (flash access is cut off). A power cycle restores it.
 
 What follows from this:
 
-- The update-mode DFU is Behringer's own bootloader, not ST's ROM one (which is unreachable with these option bits).
-- With no securable area and no PCROP, **code running from flash can read the whole flash**. A custom application, once installed through the normal update path, could read the bootloader out and send it over USB. That's the clean route to the bootloader, with no protection bypass.
+- Update mode is Behringer's own bootloader, not ST's ROM one (which is unreachable with these option bits).
+- With no securable area and no PCROP, **code running from flash can read the whole flash**. The bootloader was read out this way on 2026-11-21: a patched stock application, installed through the normal update path, sent it over USB with no protection bypass (`BOOTLOADER.md`).
 - With no write protection, a faulty application could also overwrite the bootloader. Custom code must never write below `0x08008000`.
 
 ## Panel controls (verified with `sdk/examples/panel`, 2026-11-21)
@@ -94,11 +96,11 @@ What follows from this:
 | Six button LEDs | LED/key chip display byte 4, bits 0–5 = OSC, LFO, FILTER, AMP, ARP, SETTINGS; red | verified |
 | Cutoff pot | ADC1 channel 3 (PA2) | verified |
 | Resonance pot | ADC1 channel 4 (PA3) | verified |
-| Touch keyboard, key-down line | ADC1 channel 15 (PB0): 4080–4095 idle, 51–54 while any key is touched, the same for every key | verified as a key-down line only; where the key number comes from is unknown |
+| Touch keyboard, key-down line | ADC1 channel 15 (PB0): 4080–4095 idle, 51–54 while any key is touched, the same for every key | verified as a key-down line only; the key number comes from the chip at I2C `0x65` (see "Sound path") |
 | Volume | no ADC input reacts | analog only |
 
 - **Correction (same day):** these three ADC assignments were first recorded rotated (PA2 keyboard, PA3 cutoff, PB0 resonance). The SDK's first ADC routine returned, on each call, the channel requested by the previous call, and the test programs happened to read in an order that cancelled the error. The continuous DMA scan in `sdk/src/adc.c` has no such lag, and the table above is from that.
-- Display byte 6 of the LED chip, which the stock start-up animation also writes, has no visible effect.
+- Display byte 6 of the LED/key chip, which the stock start-up animation also writes, has no visible effect.
 - The LED/key chip accepts HT16K33 commands (`21` oscillator on, `81` display on, register `40` key data). Stock also sends `F2`, which is not an HT16K33 command; meaning unknown.
 
 ## Sound path (verified with `sdk/examples/tone`, 2026-11-21)
@@ -116,8 +118,9 @@ MCU DAC1 ch1 (PA4, 12-bit, 32 kHz) ──► analog filter ──► VOLUME ─�
 | Resonance | PWM compare `(1000 − value) × 699 / 1000` on TIM4 channel 1 on PB6 | verified: adds emphasis and **self-oscillates at maximum**, which is a property of the filter, not a fault |
 | PWM rate | about 22 kHz in the SDK (timer clock 16 MHz, period 700); the stock code computes about 61 kHz | 22 kHz verified at both 16 and 170 MHz core clock: no whine or clicks. The stock rate is untested with SDK code |
 | Amplifier | no separate control found: level is set digitally before the DAC | from the tone test: a digital fade gives clean note on/off |
-| Touch keyboard | a second chip on I2C2 (PA8 SDA, PA9 SCL) at address `0x65`; a plain 2-byte read gives one bit per key (stock: `0x0801084C`) | verified: lowest key = `0x8000`, each key up is the next bit down, highest = `0x0001`; `0x0000` with nothing touched. Key order low to high: B, C, C♯, D, D♯, E, F, F♯, G, G♯, A, A♯, B, C, C♯, D (from the panel photo) |
+| Touch keyboard | a second chip on I2C2 (PA8 SDA, PA9 SCL) at address `0x65`; a plain 2-byte read gives one bit per key (stock: `0x0801084C`) | verified: lowest key = `0x8000`, each key up is the next bit down, highest = `0x0001`; `0x0000` with nothing touched |
 
+- Touch-keyboard key order, low to high: B, C, C♯, D, D♯, E, F, F♯, G, G♯, A, A♯, B, C, C♯, D (from the panel photo).
 - At high resonance the tone takes on an edge. The owner's read is that this is the filter folding the wave, not clipping in the digital path (the test signal is at half scale).
 
 ## USB (verified with `sdk/src/usb.c`, 2026-11-21)
@@ -149,7 +152,7 @@ Read from the firmware's pin-setup code (`HAL_GPIO_Init` at `0x0800B2A8` and its
 | PA15 | OLED data/command (output) | set differently for command and data writes |
 | PA7 | SPI1 MOSI (AF5) | `HAL_SPI_MspInit`; OLED data |
 | PB3 | SPI1 SCK (AF5) | OLED clock |
-| PB7, PB8 | I2C1 SDA, SCL (AF4, open drain) | EEPROM U4 (`0x50`) **and** an HT16K33-style LED/key driver (`0x70`), both seen on U4 pins 5/6 in an I2C capture. PB8 is also the BOOT0 pin |
+| PB7, PB8 | I2C1 SDA, SCL (AF4, open drain) | EEPROM U4 (`0x50`) **and** an HT16K33-style LED/key chip (`0x70`), both seen on U4 pins 5/6 in an I2C capture. PB8 is also the BOOT0 pin |
 | PA8, PA9 | I2C2 SDA, SCL (AF4, pull-up) | touch-keyboard controller at `0x65`: 2 bytes, one bit per key |
 | PB6 | TIM4 CH1 (AF2) | filter resonance PWM (verified) |
 | PB5 | TIM8 CH3N (AF3) | filter cutoff PWM (verified) |
@@ -159,7 +162,7 @@ Read from the firmware's pin-setup code (`HAL_GPIO_Init` at `0x0800B2A8` and its
 | PA13, PA14 | SWDIO, SWCLK | debug header X4 (not reconfigured by the firmware) |
 
 - The OLED is on SPI (write-only: no MISO pin is set up), not I2C.
-- The EEPROM shares I2C1 with the LED/key driver, which the application polls every 170 ms. An external programmer must stop the MCU first (debug probe halt), or its transfers will collide.
+- The EEPROM shares I2C1 with the LED/key chip, which the application polls every 170 ms. An external programmer must stop the MCU first (debug probe halt), or its transfers will collide.
 
 ## Reference documents
 
@@ -171,7 +174,7 @@ Not stored in the repository; `docs/manuals/README.md` lists where to download e
 | `RM0440_STM32G4_reference_manual.pdf` | Flash option bytes, RDP levels, securable memory area, PCROP |
 | `ES0430_STM32G431_errata.pdf` | Device errata; a text search found no protection-related entry |
 | `AN2606_system_bootloader.pdf` | ST's ROM bootloader: entry conditions and behaviour per family |
-| `AN3156_USB_DFU_protocol.pdf`, `UM0412_DfuSe_…pdf` | The DfuSe protocol SynthTribe speaks to the device |
+| `AN3156_USB_DFU_protocol.pdf`, `UM0412_DfuSe_…pdf` | The DfuSe protocol in SynthTribe's `STM32USBUpdater`; not used for this synth (FIRMWARE.md) |
 | `AN5156_STM32_security_intro.pdf` | ST's overview of protection features and threat model |
 | `UM2262_SBSFU_…pdf`, `AN5056_SBSFU_integration_guide.pdf` | ST's reference secure bootloader (AES-based); a template many vendors start from |
 | `AN2557_IAP_using_USART.pdf` | ST's classic in-application-programming bootloader example |
@@ -181,11 +184,13 @@ Not stored in the repository; `docs/manuals/README.md` lists where to download e
 | Firmware fact | Hardware match |
 |---|---|
 | Image at `0x08008000`, 98,304 bytes | G431KB flash `0x08000000`–`0x0801FFFF`: 32 KiB bootloader + 96 KiB app = 128 KiB |
-| SynthTribe flashes over ST DfuSe (`STM32USBUpdater`) | The G4 has a USB FS device. The bootloader (custom, or ST's ROM DFU) accepts the encrypted image |
-| 64-bit block cipher, CBC (inference) | The G431 has no AES unit, so it's a software cipher (XTEA/Blowfish/DES class) |
+| SynthTribe flashes over a USB serial port with ST's UART-bootloader-style protocol (`STM32UARTUpdater`) | The G4 has a USB FS device. Behringer's own bootloader presents the serial port and accepts the encrypted image |
+| Speck-64/128 in CBC mode | The G431 has no AES unit, so the cipher runs in software |
 | `bootAddress 0x2403FFFC` in `config.json` | **Doesn't fit the G431** (SRAM is at `0x20000000`, 32 KiB). Probably copied from another product's template |
 
 ## Next steps (non-destructive first)
+
+Step 2 was done on 2026-11-21 (RDP level 1, no securable area, `BOOT_LOCK = 0`; see "Debug probe query"). Step 4's SWD pads were confirmed by the same probe.
 
 1. Trace X4 to U1 with a continuity meter (power off).
 2. Connect an ST-Link (SWD) and **read the option bytes only**. The RDP level can be read even when flash is protected:

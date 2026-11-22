@@ -6,7 +6,6 @@
  *   USB MIDI           notes in (a held MIDI note wins over the keyboard); keyboard notes out;
  *                      cutoff = CC 74, resonance = CC 71, both directions (the stock numbers).
  *                      A received CC holds until that knob is moved again.
- *   OSC + SETTINGS     back to update mode
  * Audio is rendered in the interrupt; the main loop only reads controls and draws. */
 #include "jt4000.h"
 
@@ -105,10 +104,9 @@ int main(void) {
         }
         uint16_t cut = (uint16_t)(value[0] * 1000 / 127);
         uint16_t res = (uint16_t)(value[1] * 1000 / 127);
-        int osc = jt_button_osc(), set = jt_button_settings();
+        int osc = jt_button_osc();
         jt_filter(cut, res);
 
-        if ((osc && set) || jt_usb_update_request) jt_enter_update_mode();
         if (osc && !osc_was) square = !square;
         osc_was = osc;
         jt_leds((uint8_t)(square ? JT_LED_LFO : JT_LED_OSC));

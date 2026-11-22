@@ -12,7 +12,6 @@ int main(void) {
     jt_init();
     jt_usb_init();                  /* lets `make flash` restart the synth by itself */
     for (;;) {
-        jt_poll_escape();
         jt_keys_raw(k);
         uint8_t leds = (uint8_t)(k[0] << 1);                        /* LFO..ARP keys -> their LEDs */
         if (jt_button_osc()) leds |= JT_LED_OSC;

@@ -1,6 +1,6 @@
 /* The starting point for a new firmware (`make new APP=name` copies this folder):
- * text on the display, the two direct buttons, and the two ways back to update mode
- * (OSC + SETTINGS, or `make flash` over USB). */
+ * text on the display, the two direct buttons, and jt_usb_init(), which lets `make flash`
+ * restart the synth into update mode. */
 #include "jt4000.h"
 
 static void u32_to_str(uint32_t v, char *out) {
@@ -16,7 +16,6 @@ int main(void) {
     jt_init();
     jt_usb_init();                  /* lets `make flash` restart the synth by itself */
     for (;;) {
-        jt_poll_escape();
         jt_oled_clear();
         jt_oled_text(0, 0, "JT-4000 SDK");
         jt_oled_text(0, 8, "hello, world");

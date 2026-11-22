@@ -16,7 +16,6 @@
  *   SELECT press   hold: notes ring on until pressed again (a square top right)
  *   keyboard       play; the last key becomes the generator's home note
  *   USB MIDI       notes in and out
- *   OSC+SETTINGS   back to update mode
  *
  * Chain: four voices -> digital filter -> echo, grains, reverb (at 16 kHz) -> analog filter. */
 #include "jt4000.h"
@@ -425,7 +424,6 @@ int main(void) {
 
     for (;;) {
         jt_delay_ms(8);
-        jt_poll_escape();
         uint32_t t = audio_blocks * 2, dt = t - t_last;
         t_last = t;
 

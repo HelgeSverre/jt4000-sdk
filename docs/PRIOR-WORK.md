@@ -2,7 +2,7 @@
 
 Web research, 2026-11-21. Nothing here has been tried on the JT-4000. "Confirmed on" means the authors reported it on that chip; the STM32G4 is not confirmed for any of these.
 
-**Update, same day:** the JT-4000 images are now decrypted without touching the chip. The cipher came from Music Tribe's PRO-800 packer and the key from its Windows build; see [FIRMWARE.md](FIRMWARE.md). The hardware approaches below are no longer needed for the application firmware; only the bootloader itself remains unread.
+**Update, same day:** the JT-4000 images are now decrypted without touching the chip. The cipher came from Music Tribe's PRO-800 packer and the key from its Windows build; see [FIRMWARE.md](FIRMWARE.md). The hardware approaches below were not needed: the bootloader was then read out by a patched application installed through the normal update; see [BOOTLOADER.md](BOOTLOADER.md).
 
 Summary at the time of research: no published method is confirmed on the STM32G4, and nobody had publicly decrypted a Behringer `*_CRY_*` image. The two closest reproducible results are flash erase suppression (STM32L422KBT6) and TraceRip (STM32G0).
 
@@ -18,7 +18,7 @@ Summary at the time of research: no published method is confirmed on the STM32G4
 
 - **Flash erase suppression** interferes with the mass erase during an RDP 1→0 regression, so debug access returns with flash intact.
   - It needed both digital-domain buffer capacitors removed for the voltage variant; the electromagnetic variant needed no board changes.
-  - The authors damaged many chips while searching for parameters. **A failed attempt erases everything.** On this synth that includes the bootloader, which can't be restored, so the unit would be bricked.
+  - The authors damaged chips while searching for parameters. **A failed attempt erases everything.** On this synth that includes the bootloader, which can't be restored, so the unit would be bricked.
 - **TraceRip** relies on core registers and SRAM staying readable under RDP 1; only flash is locked.
   - It power-cycles the chip, waits a precise delay, halts it, and reads the registers. Repeated across delays, this reconstructs what the code handled.
   - It needs target code that reads through flash at boot (their target computed a CRC over the application). Capture took days.
@@ -40,13 +40,13 @@ Summary at the time of research: no published method is confirmed on the STM32G4
 |---|---|
 | JT-4000 | A Mod Wiggler thread (Feb 2024) has someone fetching the 1.1.5 binary and stopping at the encryption and the locked chip (search snippet only; page returned 403) |
 | SynthHUB (github.com/utajum/SynthHUB) | SysEx/WebUSB editor that lists the JT-4000. Its README says firmware update is out of scope |
-| PRO-800 (STM32F446) | Music Tribe published `PRO800-Firmware-Packer` (packer binaries, schematic, memory map; Oct 2026). Bootloader at `0x08000000`, write-protected; updates over SysEx. Unknown whether the packer shares anything with the `CRY` scheme |
-| Neutron (STM32F051) | Stock ROM DFU bootloader; factory firmware reportedly dumped with DfuSe Demo, so no read protection there |
+| PRO-800 (STM32F446) | Music Tribe published `PRO800-Firmware-Packer` (packer binaries, schematic, memory map; Oct 2026). Bootloader at `0x08000000`, write-protected; updates over SysEx. The packer uses the cipher of the `CRY` images, and its Windows build contains their key (FIRMWARE.md) |
+| Neutron (STM32F051) | Stock ROM DFU bootloader; stock firmware reportedly dumped with DfuSe Demo, so no read protection there |
 | DEQ2496, BCR2000 | XOR cipher. On the DEQ2496 the keys sat in the bootloader and were recovered by disassembling it (Malvineous/behringerctl) |
 | TD-3, Crave, Pro-1 | `.syx` updates; only the pattern/SysEx protocols are documented |
 | SynthTribe | No reverse-engineering write-up found |
 
-The PRO-800 packer is the most promising lead: it is the vendor's own tool for building update files for a synth in the same SynthTribe protocol family (`General_ProtocolZS` has PRO-800 handlers).
+The PRO-800 packer is the vendor's own tool for building update files for a synth in the same SynthTribe protocol family (`General_ProtocolZS` has PRO-800 handlers). It supplied the cipher and the key for the JT-4000 images (see the update above).
 
 ## 4. Comparable cases elsewhere
 

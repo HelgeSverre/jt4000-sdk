@@ -1,12 +1,12 @@
-# JT-4000 Micro: custom firmware
+# JT-4000 Micro custom firmware SDK
 
-![The display of the demo firmware: a name out of a starfield, a lit cube, plasma, a ship shooting a word apart, a drum kit played by falling balls](docs/header.gif)
+![The JT-4000 Micro running the example firmwares, with its 128 x 32 pixel display shown large: the demo, groove, acid, simon, choir and drone](docs/header.gif)
 
-Write your own firmware for the Behringer JT-4000 Micro in C and flash it over the synth's
-own USB port in about three seconds. No SynthTribe, no debug probe, no opening the case.
+A C SDK and a USB flasher for writing your own firmware for the Behringer JT-4000 Micro
+synthesizer, with a simulator and a desktop window for trying it without the synth. Firmware
+is flashed over the synth's own USB port in about three seconds.
 
-**[Watch the launch film](https://youtu.be/e9ZN6e1a2sM)** (2 minutes): every example firmware being
-played, to a track made of the firmwares themselves.
+[![Video: the example firmwares being played](docs/video.jpg)](https://youtu.be/6p2UCR0Uu50)
 
 This repository holds two things:
 
@@ -17,58 +17,80 @@ This repository holds two things:
 - **The reverse-engineering work behind it** (`docs/`, `tools/`, `ghidra/`): the firmware
   encryption, the bootloader's update protocol, the SysEx commands and the hardware map.
 
-Unofficial. Not affiliated with or endorsed by Behringer / Music Tribe. You flash your
-synth at your own risk; see [Safety](#safety-and-recovery) for why the risk is small.
+This project is unofficial and is not affiliated with or endorsed by Behringer / Music Tribe.
+You flash your synth at your own risk; see [Safety](#safety-and-recovery) for why the risk is
+small.
 
 ## Quick start
 
-Needs `arm-none-eabi-gcc`, `make` and [`uv`](https://docs.astral.sh/uv/). Developed and tested on macOS; nothing is macOS-specific except `fwfetch.py`'s default path to SynthTribe, but Linux and Windows are untried.
+Requires `arm-none-eabi-gcc`, `make`, [`uv`](https://docs.astral.sh/uv/) and
+[`just`](https://github.com/casey/just). Developed and tested on macOS. Not tested on Linux or
+Windows; the only macOS-specific part is `fwfetch.py`'s default path to SynthTribe.
 
 ```sh
-brew install arm-none-eabi-gcc arm-none-eabi-binutils uv     # macOS
-
-cd sdk
-make sim                      # build examples/hello and run it in the simulator
-make flash                    # build and flash it to the synth
-make APP=soundbox flash       # an ambient sound box: plays itself; six buttons, two knobs, pictures, no menus
-make APP=trance flash         # supersaw, trance gate, built-in riffs
-make APP=demo flash           # a minute and a half of music, pictures and speech, then a synth to play
-make APP=simon flash          # Simon with melodies: the robot plays, you repeat, it taunts you when you miss
-make APP=acid flash           # a 303-style bassline machine: accent, slide, a ladder filter or the real analog one
-make APP=choir flash          # frozen speech as a pad: park inside a word, four voices sing what is there
-make APP=drone flash          # a drone you sculpt: 16 keys are 16 partials, six pages, 16 scenes that morph
-make APP=groove flash         # a six-track groovebox: 16 keys are 16 steps; drums, acid bass, lead, a voice
-make APP=speak flash          # a talking typewriter: Speak & Spell style speech, sung at any note
-make new APP=mysynth          # start your own from examples/hello
+brew install arm-none-eabi-gcc arm-none-eabi-binutils uv just     # macOS
 ```
 
-Connect the synth by USB and switch it on before `make flash`. On stock firmware, and on
-SDK firmware, the tool restarts the synth into update mode by itself. If that fails, hold
-**OSC + SETTINGS** while switching the synth on (the button lights blink) and run it again.
-
-Back to the factory firmware at any time (from the repository root):
+All commands run from the repository root. `just` on its own lists them.
 
 ```sh
-uv run tools/fwfetch.py          # download the latest factory firmware into firmware/
-uv run tools/flash.py flash firmware/JT-4000_INTFLASH_CRY_V115.bin
+just fetch            # download the stock firmware once, so you can go back
+just flash acid       # build an example and flash it to the synth
+just host acid        # or run it in a window on this computer, with sound
+just new mysynth      # start your own in sdk/examples/mysynth, copied from hello
+just stock            # flash the stock firmware again
 ```
 
-The factory firmware is Behringer's and is not part of this repository. `fwfetch.py`
-downloads it from Music Tribe's update server the way SynthTribe does. Fetch it once,
-before you flash anything else, so the way back is on your disk.
+Connect the synth by USB and switch it on before `just flash`. The flasher restarts the synth
+into update mode by itself, from stock firmware and from SDK firmware. If it reports "synth not
+found", hold **OSC + SETTINGS** while switching the synth on (the button lights blink) and run
+the command again.
 
-With [`just`](https://github.com/casey/just) installed, the same things are `just flash groove`, `just host groove`, `just stock` (back to the factory firmware) and so on; `just` on its own lists them.
+The stock firmware is Behringer's and is not part of this repository. `just fetch` downloads it
+from Music Tribe's update server the way SynthTribe does.
+
+### Examples
+
+`just flash <name>` or `just host <name>` with one of these. Each has its controls in
+`sdk/examples/<name>/README.md` or in the comment at the top of its `main.c`.
+
+| Name | What it is |
+|---|---|
+| `acid` | A 303-style bassline machine with accent and slide |
+| `groove` | A six-track groovebox: drums, bass, lead and a voice |
+| `drone` | An additive drone: the 16 keys are 16 partials |
+| `choir` | A pad made from frozen speech, up to four voices |
+| `speak` | A talking typewriter: 267 words, spoken or sung at any note |
+| `simon` | A memory game with melodies and a talking opponent |
+| `trance` | A supersaw with a trance gate and built-in riffs |
+| `soundbox` | An ambient sound box that plays itself |
+| `demo` | A demoscene-style demo: music, pictures and speech, then a synth to play |
+| `tone`, `hello`, `panel`, `bringup` | Small starting points and hardware tests |
+
+### All commands
+
+| Command | Does |
+|---|---|
+| `just apps` | List the examples |
+| `just build <name>` | Build without flashing |
+| `just flash <name>` | Build and flash |
+| `just new <name>` | New firmware from `hello` |
+| `just host <name>` | Run in the window |
+| `just shot <name> [ms]` | Save a picture of the window after `ms` milliseconds |
+| `just video <name> [ms] [file]` | Save a video with sound |
+| `just sim <name>` | Run the ARM binary in the simulator and print the display |
+| `just words <name>` | Rebuild a firmware's speech from its `words.txt` |
+| `just fetch`, `just stock` | Download, and flash, the stock firmware |
+| `just check` | Lint the tools and build every example |
+
+Without `just`, the same builds are `make` targets inside `sdk/`; see
+[`sdk/README.md`](sdk/README.md).
 
 ## Try it without the synth
 
-`tools/panel.py` compiles a firmware's source for your computer and runs it in a window
+`just host <name>` compiles a firmware's source for your computer and runs it in a window
 drawn after the instrument, with sound. Click and drag the controls, press P for a
 screenshot and R to record a video.
-
-```sh
-uv run --with pygame-ce --with sounddevice --with numpy tools/panel.py groove
-uv run --with pygame-ce --with numpy tools/panel.py choir --ms 8000 --video choir.mp4    # no window: straight to a file
-```
 
 | | |
 |---|---|
@@ -77,10 +99,9 @@ uv run --with pygame-ce --with numpy tools/panel.py choir --ms 8000 --video choi
 | ![speak](docs/shots/speak.png) `speak` | ![soundbox](docs/shots/soundbox.png) `soundbox` |
 | ![simon](docs/shots/simon.png) `simon` | ![demo](docs/shots/demo.png) `demo` |
 
-The window is for playing, demos and pictures. It is the firmware's real code, but not the
-real hardware: the analog filter is a digital stand-in and USB is absent. `tools/emu.py`
-runs the actual ARM binary, slowly and without a window, and is the one to trust about
-timing; the synth is the one to trust about sound.
+The window runs the firmware's real code on simulated hardware: the analog filter is a digital
+approximation and there is no USB. `just sim <name>` runs the actual ARM binary, slowly and
+without a window; use it to prove that a build runs. Judge sound on the synth.
 
 ## A firmware in twenty lines
 
@@ -96,10 +117,9 @@ static void render(int16_t *out, int n) {            /* called from the audio in
 
 int main(void) {
     jt_init();                                        /* clock, display, panel, knobs, keyboard */
-    jt_usb_init();                                    /* USB MIDI; also lets `make flash` restart us */
+    jt_usb_init();                                    /* USB MIDI; also lets `just flash` restart the synth */
     jt_audio_init(render);
     for (;;) {
-        jt_poll_escape();                             /* OSC + SETTINGS -> update mode */
         int key = jt_keyboard_lowest(jt_keyboard());
         if (key >= 0) jt_osc_hz(&osc, jt_note_hz(47 + key), JT_SAMPLE_RATE);
         jt_filter(jt_pot(JT_ADC_CUTOFF) / 4, jt_pot(JT_ADC_RESONANCE) / 4);
@@ -121,9 +141,8 @@ The full API is in [`sdk/README.md`](sdk/README.md) and the headers in `sdk/incl
 | Controls | 16 touch keys, 6 lit buttons, a push encoder, cutoff and resonance knobs |
 | Connection | USB (MIDI when running, serial in update mode) |
 
-Two consequences shape most designs. The analog filter comes **after** the DAC, so it
-filters everything, digital effects included. And 32 KiB of RAM means about half a second
-of delay memory at 16 kHz, not seconds of sampling.
+The analog filter comes after the DAC, so it filters everything, digital effects included.
+32 KiB of RAM holds about half a second of delay memory at 16 kHz.
 
 Everything in the SDK has run on a real JT-4000.
 
@@ -132,32 +151,36 @@ Everything in the SDK has run on a real JT-4000.
 The factory bootloader lives in the first 32 KiB of flash and is never touched by flashing.
 It checks the firmware image before starting it and offers three ways into update mode:
 
-1. Hold **OSC + SETTINGS** while switching on. Always works, whatever is flashed.
-2. An image that fails its check (interrupted flash) lands in update mode by itself.
+1. Hold **OSC + SETTINGS** while switching on. This works whatever firmware is flashed.
+2. If an image fails its check (after an interrupted flash), the synth starts in update mode.
 3. Running firmware asks for it (the stock firmware over SysEx, SDK firmware the same way).
 
-So a broken firmware costs a button combination, not a synth. The one thing that could
-do real damage is code that writes to flash below `0x08008000`; the SDK contains none.
+A broken firmware is recovered by holding **OSC + SETTINGS** at power-on. The only code that
+can do permanent damage is code that writes to flash below `0x08008000`; the SDK contains none.
 
-Your presets live in a separate memory chip (an EEPROM). The SDK's storage functions use
+Your presets are stored in a separate memory chip (an EEPROM). The SDK's storage functions use
 only a part of it that the stock firmware never touches, so presets survive custom
-firmware. Firmware that writes the chip directly could overwrite them; back up first, on stock firmware, with `uv run tools/sysex.py dump presets -o dumps/all-presets.syx`.
+firmware. Firmware that writes the chip directly might overwrite them. Back up first, on stock
+firmware, with `uv run tools/sysex.py dump presets -o dumps/all-presets.syx`.
 
 ## Repository map
 
 | Path | Content |
 |---|---|
 | `sdk/` | The SDK, its examples and its own README |
-| `tools/` | `fwfetch.py` (download factory firmware), `flash.py` (flasher), `fwpack.py` (packaging, encryption), `emu.py` (simulator), `sysex.py` (talk to stock firmware), `riff.py` (MIDI file to riff for `examples/trance`), `lpcwords.py` (word list to LPC speech: `just words <app>`), `panel.py` (the synth in a window). They end with a one-line `error:` on failure; set `JT_DEBUG=1` for the traceback |
+| `tools/` | `fwfetch.py` (download stock firmware), `flash.py` (flasher), `fwpack.py` (packaging, encryption), `emu.py` (simulator), `sysex.py` (talk to stock firmware), `riff.py` (MIDI file to riff for `examples/trance`), `lpcwords.py` (word list to LPC speech), `panel.py` (the synth in a window) |
 | `docs/` | `HARDWARE.md` (pins, parts), `BOOTLOADER.md` (start-up rules, update protocol), `FIRMWARE.md` (image format, encryption), `SYSEX.md`, `FIRMWARE-MAP.md` (stock firmware internals, preset format, EEPROM layout, CC map), `VERSIONS.md`, `ROADMAP.md`, `PRIOR-WORK.md`, `shots/` (pictures from `panel.py`) |
 | `firmware/` | Empty until you run `tools/fwfetch.py` (`--all --decrypt` for every version, decrypted, as the Ghidra scripts expect) |
 | `ghidra/` | Scripts and named symbols for reading the stock firmware |
 | `AGENTS.md` | Working rules for AI coding agents |
 
+The tools end with a one-line `error:` on failure; set `JT_DEBUG=1` for the traceback.
+`just words <app>` runs `lpcwords.py`.
+
 ## Building with an AI agent
 
-`AGENTS.md` tells a coding agent how to work in this repository: the build, simulate,
-flash loop, the limits of the chip, and the mistakes already made once. Point your agent
+`AGENTS.md` tells a coding agent how to work in this repository: the build, simulate and
+flash loop, the limits of the chip, and the bugs behind each rule. Point your agent
 at the repository and describe the instrument you want.
 
 ## Licence

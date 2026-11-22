@@ -371,7 +371,6 @@ int main(void) {
 
     for (;;) {
         jt_delay_ms(8);
-        jt_poll_escape();
         uint32_t t = audio_blocks * 2;
         int word = BANKS[bank].first + at[bank];
 

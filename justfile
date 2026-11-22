@@ -31,13 +31,13 @@ flash app:
 new app:
     make -C sdk APP={{ app }} new
 
-# Flash factory firmware
+# Flash stock firmware
 [group('firmware')]
 stock:
     test -f {{ stock_image }} || {{ uv }} run tools/fwfetch.py
     {{ uv }} run tools/flash.py flash {{ stock_image }}
 
-# Download factory firmware
+# Download stock firmware
 [group('firmware')]
 fetch *args:
     {{ uv }} run tools/fwfetch.py {{ args }}
@@ -63,11 +63,6 @@ shot app ms="3000" *args:
 [group('preview')]
 video app ms="8000" out="demo.mp4" *args:
     {{ panel }} {{ app }} --ms {{ ms }} --video {{ out }} {{ args }}
-
-# Redraw the README header
-[group('preview')]
-header:
-    {{ uv }} run --with pillow --with pygame-ce --with numpy tools/header_gif.py
 
 # Run the ARM binary in the simulator
 [group('preview')]

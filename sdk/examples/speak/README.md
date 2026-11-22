@@ -9,9 +9,8 @@ make APP=speak flash
 
 ## Controls
 
-The knob says where, the keys say which note, the buttons do things. The display has two
-rows, the word to add (top) and the sentence (bottom); pressing SELECT moves the knob from
-one row to the other.
+The display has two rows, the word to add (top) and the sentence (bottom); pressing SELECT
+moves the knob from one row to the other.
 
 | Control | Word row | Sentence row |
 |---|---|---|
@@ -50,7 +49,7 @@ speak the word without adding it, so you can hear the change. SELECT press goes 
 | OCTAVE | -2..2 | Whole octaves down or up |
 | TONE | 0..10 | 0 is one bare click per period, the Speak & Spell buzz; 10 is round and dull |
 | BREATH | 0..10 | Noise mixed into the voice; 10 is a whisper |
-| ROUGH | 0..10 | Uneven periods: gravel |
+| ROUGH | 0..10 | Uneven periods: each one varies in length at random |
 | VIBRATO | 0..10 | Depth, up to 0.7 semitones |
 | BEND | -10..10 | The pitch falls (-) or rises (+) through each word, up to 7 semitones |
 | DOUBLE | 0..10 | A second voice, detuned by up to 4 % |
@@ -61,7 +60,7 @@ The method of the 1978 Speak & Spell, linear predictive coding. Each word is ren
 on the computer, cut into 20 ms frames, and every frame reduced to a loudness, a
 voiced/unvoiced flag and ten coefficients of a lattice filter: about 500 bytes per second
 of speech. The synth feeds that filter with pulses (voiced) or noise (unvoiced). The pitch
-of the original is thrown away, which is why any word can be said at any note.
+of the original is not stored, which is why any word can be said at any note.
 
 Running text-to-speech on the synth itself does not fit: the letter-to-sound rules alone
 are 1.5 MB, the synth has 96 KiB.

@@ -65,7 +65,6 @@ static uint8_t scratch[64];
 #define QN 64                        /* MIDI event queues, 4 bytes per event */
 static volatile uint32_t rxq[QN], txq[QN];
 static volatile uint8_t rx_head, rx_tail, tx_head, tx_tail, tx_busy;
-volatile uint8_t jt_usb_update_request;
 
 static void ep_stat(int ep, int tx, int stat) {
     uint16_t mask = tx ? 0x0030 : 0x3000, v = EPR(ep);
@@ -187,7 +186,7 @@ static void system_sysex(const uint8_t *m, int n) {
     static const uint8_t head[7] = {0xF0, 0x00, 0x20, 0x32, 0x00, 0x01, 0x38};
     if (n < 9) return;
     for (int i = 0; i < 7; i++) if (m[i] != head[i]) return;
-    if (m[7] == 0x02) jt_usb_update_request = 1;
+    if (m[7] == 0x02) jt_enter_update_mode();       /* the flasher asks: does not return */
     if (m[7] == 0x08) {
         static const uint8_t v[13] = {0xF0, 0x00, 0x20, 0x32, 0x00, 0x01, 0x38, 0x09, 0x00,
                                       JT_SDK_VERSION_MAJOR, JT_SDK_VERSION_MINOR, JT_SDK_VERSION_PATCH, 0xF7};

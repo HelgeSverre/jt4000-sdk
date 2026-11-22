@@ -37,7 +37,7 @@ make APP=groove flash
 
 Holding SELECT also shows the pattern number, tempo, swing and which tracks are muted.
 A knob does nothing after you press or let go of a track button until you move it, so the
-sound never jumps.
+sound does not jump.
 
 The display shows all six tracks on top, one row each, and the selected track below as
 16 boxes: bar height is the drum level or the note, a dot in the corner is an accent, a
@@ -49,15 +49,15 @@ Patterns 1 to 6 are filled in (acid house, techno, electro, trance, slow burn, a
 ## Sound
 
 Every track has 16 sounds, each a set of six settings; the two knobs adjust the first
-two and the rest give the sound its character (the kick's pitch drop, drive and click,
-the bass's wave and envelope, the lead's waves, detune and octave, and so on). While a
+two and the other four are fixed by the sound (for example the kick's pitch drop, drive
+and click, the bass's wave and envelope, the lead's waves, detune and octave). While a
 track button is held the display shows the track, the sound's number and the two knob
 settings.
 
 Kick, snare and hat are synthesized, not samples. The bass is a saw through a digital
 resonant filter with its own envelope, which is what accent and slide act on; the kick
-ducks it. The voice track is LPC speech (`jt_lpc.h`), chopped by the next word. Lead,
-voice and a little snare feed a tempo-synced echo. The synth's analog filter comes last,
-over everything, so the two knobs work like a DJ filter with a resonance that can sing.
+lowers its level. The voice track is LPC speech (`jt_lpc.h`); the next word cuts off the
+one before. The lead, the voice and 8 % of the snare feed a tempo-synced echo. The synth's
+analog filter comes last, so the two knobs filter the whole mix.
 
 `words.txt` lists the voice track's words; `tools/lpcwords.py --list ... --out ...` rebuilds `words.h`.

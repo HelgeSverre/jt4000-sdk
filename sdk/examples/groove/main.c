@@ -520,7 +520,6 @@ int main(void) {
 
     for (;;) {
         jt_delay_ms(8);
-        jt_poll_escape();
         uint32_t t = audio_blocks * 2;
         uint8_t now = buttons(), pressed = (uint8_t)(now & ~held), released = (uint8_t)(held & ~now);
         held = now;

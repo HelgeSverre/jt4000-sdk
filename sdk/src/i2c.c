@@ -68,6 +68,14 @@ void jt_i2c_init(void) { bus_init(&BUS1, false); }  /* this bus has pull-ups on 
 bool jt_i2c_write(uint8_t addr, const uint8_t *data, int n) { b = &BUS1; return wr(addr, data, n); }
 bool jt_i2c_read(uint8_t addr, uint8_t *data, int n) { b = &BUS1; return rd(addr, data, n); }
 void jt_i2c_stop_delay(uint32_t loops) { spin(loops); }
+/* Take the bus over from a transfer that was cut off half-way: nine clocks let a chip that
+ * is sending finish its byte and let go of the data line, then a stop. */
+void jt_i2c_recover(void) {
+    b = &BUS1;
+    sda(1);
+    for (int i = 0; i < 9; i++) { scl(1); scl(0); }
+    stop();
+}
 
 /* Touch keyboard: a plain 2-byte read returns one bit per key, as the stock firmware
  * does at 0x0801084C. Stock enables the MCU's pull-ups on this bus, so we do too. */

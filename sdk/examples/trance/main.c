@@ -7,7 +7,6 @@
  *   cutoff, resonance     the analog filter over everything: the build-up sweep
  *   panel buttons         menu pages: SOUND, GATE, FILTER, AMP, RIFF (ARP button), FX (SETTINGS)
  *   SELECT                turn to choose, press to edit
- *   OSC + SETTINGS        back to update mode
  *
  * Notes the riff plays also go out over USB MIDI. Riffs are in riffs.h. */
 #include "jt4000.h"
@@ -429,7 +428,6 @@ int main(void) {
 
     for (;;) {
         jt_delay_ms(10);
-        jt_poll_escape();
 
         uint16_t bits = jt_keyboard();
         if (bits && bits == last_bits) { stable = bits; quiet = 0; }

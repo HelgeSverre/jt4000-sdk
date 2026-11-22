@@ -153,13 +153,13 @@ Observed sequence, re-flashing stock 1.1.5 (log: `captures/synthtribe-update-sto
 | 1 | `F0 00 20 32 00 01 38 02 F7` → reply `… 03 00 F7` | SysEx command `02`: the app sets the EEPROM flag and resets |
 | 2 | `bootDFUComPort: "cu.usbmodem2072309B42311"` | The bootloader appears as a USB serial port (the MIDI ports vanish). The port name carries the chip's serial number |
 | 3 | `STUARTDFU_init`, `STUARTDFU_getID` | Handshake and chip-ID query (`STM32UARTUpdater`) |
-| 4 | `STUARTDFU_eraseQSPI` ×2, `skip QSPI` | No external flash on this model (`needQSPI false`) |
+| 4 | `STUARTDFU_eraseQSPI` ×2, `skip QSPI` | The bootloader's Erase command (`BOOTLOADER.md`); no external flash on this model (`needQSPI false`) |
 | 5 | `writeInt(1) 134250496 : N`, 3 phases per chunk | Write to `0x08008000 + N` in **32-byte chunks**: 3,072 chunks = 98,304 bytes. Phases look like command, address, data |
 | 6 | `STUARTDFU_finished`, "Software update complete…" | The synth reboots itself into the application; MIDI ports return |
 
 - The synth's button lights flash red during the write.
 - Afterwards it reported 1.1.5 and answered a preset dump: the EEPROM contents survived.
-- The bytes on the serial port were not captured (the tracer was on the wrong API). The exact framing can be read from `STM32UARTUpdater::writeInt`, `caculateChecksum`, `getDeviceID`.
+- The bytes on the serial port were not captured (the tracer was on the wrong API). The exact framing was later read from the bootloader and is in `BOOTLOADER.md` ("Serial update protocol").
 
 How the run was set up, since SynthTribe refuses to update a synth that is already current:
 
@@ -190,6 +190,8 @@ Other paths in the same binary:
 - `CAppInstance::xorDecrypt(QString, QString)` is only called from `CAppInstance::initDeviceInfoFromDatabase` (device database), not from the firmware path.
 
 ### Ways to get at the key
+
+Obsolete: the key was found in Music Tribe's Windows packer (see Image format), SWD reported RDP level 1 ([HARDWARE.md](HARDWARE.md)), and the bootloader was read out by a patched application (`BOOTLOADER.md`). The list is kept as written before that.
 
 - **USB capture of an update:** shows only the `.bin` we already have.
 - **SWD (SWDIO/SWCLK test points):** if read-out protection (RDP) is level 0, the bootloader and key can be read directly. RDP level 1 blocks flash reads over the debugger.

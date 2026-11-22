@@ -53,7 +53,6 @@ void intro(void) {
     for (int i = 0; i < STARS; i++) new_star(i, 0.1f + 0.45f * (jt_rand() + 1.0f));
 
     while ((t = now() - start) < 3500) {
-        jt_poll_escape();
         jt_oled_clear();
 
         if (t < 1500) {                                         /* warp */

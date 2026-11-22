@@ -41,7 +41,6 @@ static uint8_t midi_q[64][4];
 static volatile unsigned midi_r, midi_w;
 
 uint32_t jt_clock_hz = 170000000;
-volatile uint8_t jt_usb_update_request;
 
 /* ---- what the firmware calls ---- */
 void jt_init(void) {}

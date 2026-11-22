@@ -76,7 +76,6 @@ bool jt_button_osc(void)      { return !(GPIOB->IDR & PIN(4)); }
 bool jt_button_settings(void) { return !(GPIOA->IDR & PIN(10)); }
 
 void jt_poll_escape(void) {
-    if (jt_usb_update_request) jt_enter_update_mode();   /* asked for over USB (make flash) */
     if (jt_button_osc() && jt_button_settings()) {
         jt_delay_ms(30);
         if (jt_button_osc() && jt_button_settings()) jt_reset();

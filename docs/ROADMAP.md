@@ -13,7 +13,7 @@ Status 2026-11-21 (end of day): done through custom firmware. The images are dec
 | Integrity | trailer = length + byte-sum + `ACEFACEF`; no signature |
 | Text | menu strings, USB descriptors ("JT-4000 MICRO", "MIDI Interface") in plain ASCII |
 
-The many timers fit a design where timers generate the oscillator waveforms or clocks, with the analog filter outside the MCU.
+The nine timers fit a design where timers generate the oscillator waveforms or clocks, with the analog filter outside the MCU.
 
 ## How the M-VAVE FM-1 scene does it (for comparison)
 
@@ -26,7 +26,7 @@ What carries over: a shared base project (board support + audio skeleton), a saf
 
 ## Toolchain: is "compile our own" sensible?
 
-Yes. The STM32G431 is one of the best-supported microcontrollers there is, far easier than the FM-1's chip.
+Yes. The STM32G431 builds with mainstream toolchains (table below); the FM-1's chip has none.
 
 | Option | Fit | Notes |
 |---|---|---|
@@ -74,6 +74,6 @@ Recommendation: C or Rust, producing a `.bin` linked at `0x08008000`, then one p
 
 ## Risks
 
-- **Bricking:** see phase 3. A second unit is cheap insurance (about 50 EUR).
-- **Bootloader assumptions:** the trailer check, flash write-protection and update-mode entry are inferred from the PRO-800's published behaviour, not verified on the JT-4000.
+- **Bricking:** see phase 3. A second unit costs about 50 EUR.
+- **Bootloader assumptions:** resolved. The trailer check and update-mode entry are read from the bootloader and verified on the JT-4000 (`BOOTLOADER.md`); the option bytes show no write-protected flash area (`HARDWARE.md`).
 - **Licensing:** the stock firmware is Behringer's; share patches or tools, not their binaries.

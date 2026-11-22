@@ -9,7 +9,7 @@ How SynthTribe talks to the Behringer JT-4000 Micro, recovered from the SynthTri
 | Tools | `otool -tV` (Xcode), radare2 6.2.2, `nm`/`c++filt`, mido 1.3.3 + python-rtmidi 1.5.8 |
 | Test tool | [`tools/sysex.py`](../tools/sysex.py) |
 
-> **Update:** the firmware is now decrypted and the full command list is read from its SysEx handler; see [FIRMWARE-MAP.md](FIRMWARE-MAP.md). Corrections to this document: the argument of `00 <n>` (n < `20`) is ignored and always dumps the selected preset; payload `02` is not "read operation mode" on this synth but **reboots it into firmware-update mode**.
+> **Update:** the firmware is now decrypted and the full command list is read from its SysEx handler; see [FIRMWARE-MAP.md](FIRMWARE-MAP.md). Corrections to this document: the argument of `00 <n>` (n < `20`) is ignored and always dumps the selected preset; payload `02` is not "read operation mode" on this synth but **reboots it into update mode**.
 
 Status legend: **verified** = sent to the device and the reply was checked; **app only** = found in SynthTribe, not tested on the JT-4000.
 
@@ -112,19 +112,23 @@ All 32 presets arrive in a single SysEx message.
 ```
 offset 0                                          54  55 ............ 63
        +--------------------------------------------+------------------+
-       | parameters (not yet mapped)                | name, 9 x ASCII  |
+       | parameters: FIRMWARE-MAP.md                | name, 9 x ASCII  |
        +--------------------------------------------+------------------+
 ```
 
 - The name occupies bytes 55–63, padded with spaces, for example `FATSAW␠␠␠`.
 - The data is not 7-bit packed: every value is already ≤ `7F`.
 - The Active Preset record is byte-identical to slot 0 of All Presets (FATSAW was the active preset).
-- **The dump holds the stored preset, not the edit buffer.** `tools/ccmap.py` sent all 26 CCs from the guide (channel 1, values 0/32/64/96/127) and dumped after each one: no byte changed. This matches community notes that "PROG SING SYX SEND" sends the *saved* patch. Mapping the bytes therefore needs saved edits, not live CCs. CC 74 was also sent on each of the 16 channels, with a dump after each: no change on any channel. **Confirmed:** with TXCH/RXCH both set to 1, sending CC 74 = 0 on channel 1 made the display show the `*` (unsaved edit) marker, yet the dump stays unchanged. CCs edit the unsaved buffer, and both dump requests return saved data only.
+- The dump holds the stored preset, not the edit buffer. CCs edit the unsaved buffer, and both dump requests return saved data only.
+  - `tools/ccmap.py` sent all 26 CCs from the guide (channel 1, values 0/32/64/96/127) and dumped after each one: no byte changed. This matches community notes that "PROG SING SYX SEND" sends the *saved* patch.
+  - CC 74 was also sent on each of the 16 channels, with a dump after each: no change on any channel.
+  - **Confirmed:** with TXCH/RXCH both set to 1, sending CC 74 = 0 on channel 1 made the display show the `*` (unsaved edit) marker, and the dump stayed unchanged.
+  - Live CCs therefore could not map the bytes; they were mapped from the firmware code instead ([FIRMWARE-MAP.md](FIRMWARE-MAP.md)).
 - While SynthTribe is running it also receives these replies and opens a "save dump" dialog for each one. Quit SynthTribe before scripting dumps.
 
-#### Byte layout: first guess (unconfirmed)
+#### Byte layout: first guess (superseded)
 
-Based on the value range of each byte across the 32 factory presets, compared with the panel ranges in the Quick Start Guide. Every row needs confirming by saving a one-parameter edit and diffing the dump.
+Based on the value range of each byte across the 32 factory presets, compared with the panel ranges in the Quick Start Guide. The layout has since been read from the firmware: use "Preset record" in [FIRMWARE-MAP.md](FIRMWARE-MAP.md), which differs from this table in several rows.
 
 | Offset | Range seen | Guess |
 |---|---|---|
@@ -158,7 +162,7 @@ As of 2026-11-21, none of them document or parse the synth's dump format:
 | [nuppeppou/JT4000M](https://github.com/nuppeppou/JT4000M) | Web MIDI CC editor, `sysex: false` |
 | [gary909/JT4000M-MIDI-EDITOR](https://github.com/gary909/JT4000M-MIDI-EDITOR), [bfugitt/jt4000](https://github.com/bfugitt/jt4000) | No SysEx code |
 
-The midi.guide list adds CCs that aren't in the guide: 29 OSC balance, 47 VCF envelope amount, 54/55 LFO1/LFO2 wave, 56 LFO1 destination. These are useful labels for the remaining bytes.
+The midi.guide list adds CCs that aren't in the guide: 29 OSC balance, 47 VCF envelope amount, 54/55 LFO1/LFO2 wave, 56 LFO1 destination. The firmware handles all five ([FIRMWARE-MAP.md](FIRMWARE-MAP.md)).
 
 Factory slots 0–31 on the test unit: FATSAW, SUPULSE, KRAFT, WARMFIFTH, SEQ5, VINTSTRNG, RUBBASS, BASS, PORTBASS, TRANCYPAD, 12DBGLORY, BRIGHTSTR, REZOPAD, SOFT, RINGBASS, PIVUEMME, FASTPORTA, BASSOON, DEEPSYNTH, VIBRA, SLOW, SYNBASS, STRANGE, GLISR', AVTODA, OP3RA, DRAC, OLDVYNIL, WIND, SNARE, FM-BELL, PARKUTI.
 
@@ -259,13 +263,13 @@ Extracted from every `General_SysExParser::package*` builder by reading the cons
 | `7F 74 07 02 …` | File dump data |
 | `7F 74 07 03 7F "BIN " …` | File dump request |
 | `F0 7E 00 7B 00 F7` | File dump EOF (universal SysEx) |
-| `… 03 30` | RebootDFU: two frames, reboots into the firmware-update bootloader (**do not send casually**) |
+| `… 03 30` | RebootDFU: two frames, reboots into update mode (**do not send casually**) |
 
 Reply dispatch table (`General_ProtocolZS` constructor): `05` model code, `07` model name, `09` firmware version, `0D` CV value, `5A` old update, `76` entire parameter, `78` sequencer parameter, `7E` poly chain. `recvAck` and `recvDeviceOperationMode` are also registered.
 
 ## Open questions
 
-- Map the 64 preset bytes to parameters. Method: change one knob, dump, diff.
+- Resolved: the 64 preset bytes are mapped to parameters in [FIRMWARE-MAP.md](FIRMWARE-MAP.md) ("Preset record"), read from the firmware.
 - Find the meaning of `00` in the firmware reply and `00` before the checksum in the Active Preset reply.
-- Confirm that an upload works in SYSEX RECEIVE mode, and whether a `15` frame goes to the edit buffer or the stored slot. Then map bytes by uploading single-byte edits.
-- Find the DFU and update flow: `sendFirmwareData`, `RebootDFU`, and how `JT-4000_INTFLASH_CRY_*.bin` reaches the device.
+- Resolved: an upload works in SYSEX RECEIVE mode, and a `15` frame goes to the stored slot (see "Tested" under Send side).
+- Resolved: the update flow is in [FIRMWARE.md](FIRMWARE.md) ("Update path") and [BOOTLOADER.md](BOOTLOADER.md). `JT-4000_INTFLASH_CRY_*.bin` reaches the device over a USB serial port after SysEx command `02`.

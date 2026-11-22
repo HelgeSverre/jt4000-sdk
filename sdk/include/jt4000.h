@@ -27,9 +27,10 @@ void jt_enter_update_mode(void);
 bool jt_button_osc(void);         /* PB4, true while pressed */
 bool jt_button_settings(void);    /* PA10 */
 
-/* Call regularly. Resets the MCU while OSC + SETTINGS are both held; the bootloader
- * sees the two buttons at start-up and enters update mode, so the synth can always
- * be re-flashed without power-cycling. */
+/* Optional. Call regularly to make OSC + SETTINGS, held together while the firmware runs,
+ * restart into update mode. Nothing depends on it: `make flash` reaches update mode over
+ * USB by itself (see jt_usb_init), and holding the two buttons while switching on always
+ * works, because the bootloader reads them. Leave it out to use the combination yourself. */
 void jt_poll_escape(void);
 
 /* ---- display: SSD1306 OLED, 128 x 32, 1 bit per pixel ---- */
@@ -125,14 +126,13 @@ int32_t jt_encoder(void);                         /* running count, about 200 pe
 #define JT_SDK_VERSION_MAJOR 0
 #define JT_SDK_VERSION_MINOR 1
 #define JT_SDK_VERSION_PATCH 0
-void jt_usb_init(void);                           /* call after jt_init; runs from the USB interrupt */
+/* Call after jt_init; everything then runs from the USB interrupt. That includes the
+ * stock "reboot to update mode" SysEx (F0 00 20 32 00 01 38 02 F7), which `make flash`
+ * sends: the synth restarts into update mode whatever the main loop is doing. */
+void jt_usb_init(void);
 /* One received USB-MIDI event: ev[0] & 0x0F is the kind (8 note off, 9 note on, 0xB
  * controller, 0xE pitch bend, 4..7 SysEx pieces), ev[1..3] the MIDI bytes. */
 bool jt_midi_get(uint8_t ev[4]);
 void jt_midi_send(uint8_t status, uint8_t d1, uint8_t d2);     /* channel messages, e.g. 0x90, note, velocity */
 void jt_midi_send_sysex(const uint8_t *msg, int n);            /* complete message, F0 ... F7 */
-/* Set when the host sends the stock "reboot to update mode" SysEx (F0 00 20 32 00 01 38 02 F7);
- * jt_poll_escape() acts on it, so `make flash` needs no button presses. */
-extern volatile uint8_t jt_usb_update_request;
-
 #endif

@@ -10,7 +10,7 @@ Checks for `F0 00 20 32 00 01 38`, then switches on the command byte. **This is 
 |---|---|---|---|
 | `00` | `< 20` | Dump the **currently selected** preset from EEPROM (`FUN_08017064`). The argument value is ignored | `15` + 64 bytes + `00` + checksum |
 | `00` | `20` | Dump all 32 presets (`FUN_08017130`) | `10` + 2048 bytes + checksum |
-| `02` | — | **Reboot into firmware-update mode** (`FUN_08012760`), see below | `03 00`, then model code |
+| `02` | — | **Reboot into update mode** (`FUN_08012760`), see below | `03 00`, then model code |
 | `04` | — | Model code | `05 "P0EJW" 00` |
 | `08` | — | Firmware version | `09 00 01 01 05` (constant in the image) |
 | `10` | 2048 bytes | Receive all presets: write `0x800` bytes at EEPROM offset 0 | — |
@@ -28,11 +28,11 @@ Checks for `F0 00 20 32 00 01 38`, then switches on the command byte. **This is 
 2. Queues a write of one byte, **`0xAA`, to EEPROM address `0x7FC0`** (`FUN_080171fc`) and waits for it to finish.
 3. Writes `0x05FA0004` to `SCB->AIRCR` (`0xE000ED0C`): a system reset.
 
-So the "stay in update mode" flag lives in the **external I2C EEPROM**, not in the MCU. The bootloader presumably tests `EEPROM[0x7FC0] == 0xAA` at power-up and clears it after a successful update (not verified; the bootloader is unread).
+So the "stay in update mode" flag lives in the **external I2C EEPROM**, not in the MCU. The bootloader reads `EEPROM[0x7FC0]` at power-up and, if it is `0xAA`, clears it on entering update mode, before any download (`BOOTLOADER.md`).
 
-> Sending `02` puts the synth into update mode until an update completes. Don't send it casually. `tools/sysex.py send 02` would do exactly that.
+> Sending `02` puts the synth into update mode, where it stays until it is flashed or power-cycled. Don't send it casually. `tools/sysex.py send 02` would do exactly that.
 
-Consequence for custom firmware: there may be a recovery path that doesn't need the application or SWD. An I2C programmer clipped onto the EEPROM (U4) could set the flag by hand. Still to check: what the bootloader does when the flag is clear but the application is invalid.
+Consequence for custom firmware: recovery needs neither the application nor SWD. The bootloader stays in update mode when the application is invalid, and holding OSC + SETTINGS at power-on forces update mode (`BOOTLOADER.md`). An I2C programmer clipped onto the EEPROM (U4) could also set the flag by hand.
 
 ## What the application tells us about the bootloader
 
@@ -47,7 +47,7 @@ Read from the 1.1.5 application, before the bootloader was dumped. What the boot
 | No watchdog (`IWDG`) access anywhere | The bootloader doesn't leave a watchdog running |
 | Factory presets are stored in the app image and copied to the EEPROM by FACTORY RESET | A wiped EEPROM is recoverable from the menu |
 
-USB identity in normal operation: vendor `0x1397` (Behringer), product `0x127D`, product string "JT-4000 MICRO". `config.json` lists a second product ID, `0x127E`, which is probably the update-mode identity (to confirm).
+USB identity in normal operation: vendor `0x1397` (Behringer), product `0x127D`, product string "JT-4000 MICRO". `config.json` lists a second product ID, `0x127E`, which is the update-mode identity (verified, `BOOTLOADER.md`).
 
 SynthTribe's updater (`STM32USBUpdater::prepareDevice`) claims the DFU interface, reads the ST-style memory-layout string descriptor, and has a conditional `DFUSE::ReadUnprotect` step guarded by a `m_bRemoveReadProtection` setting. Traced: the step runs only if byte `+0xE1` of the updater is non-zero, which is copied from `SettingItem+0x69`. `General_UpdateController::initial` never sets that byte (it sets `+0x6A` and `+0x6C`), and no device config has a key for it, so the read-unprotect step is **off** in the normal update flow. That matters because on ST's own ROM bootloader, read-unprotect erases the chip.
 
@@ -58,7 +58,7 @@ Saleae on U4 pins 5 (SDA) and 6 (SCL); capture `captures/u4-i2c-poweron.sal`, de
 | Time | Device | Transfer | Meaning |
 |---|---|---|---|
 | +15 ms | `0x50` EEPROM | write `7F C0`, read 1 byte → `00` | **The bootloader reads the update flag** as its first bus action. The application never reads this address, so this is bootloader code |
-| +145 ms | `0x70` | write `21 81 EF …` then 15 rounds of 18-byte writes, 0.2 s apart | Application start: HT16K33-style LED/key driver initialised (oscillator on, display on, brightness), then the button-LED start-up animation |
+| +145 ms | `0x70` | write `21 81 EF …` then 15 rounds of 18-byte writes, 0.2 s apart | Application start: HT16K33-style LED/key chip initialised (oscillator on, display on, brightness), then the button-LED start-up animation |
 | +3.18 s | `0x50` EEPROM | read 64 bytes at `7F40` | Global settings |
 | +3.19 s | `0x50` EEPROM | read 64 bytes at `0000` | Preset 1 |
 | every 170 ms after | `0x70` | write `40`, read 6 bytes | Key-matrix scan |

@@ -1,7 +1,7 @@
-# simon: the robot plays, you repeat, it gloats
+# simon: a memory game with melodies and a talking opponent
 
-Simon, but the sequence is a tune. Every round the melody grows by one note. You play it
-back on the touch keys. The robot comments, and it is not a good loser.
+The game Simon with a melody as the sequence. Every round the robot plays the melody with
+one more note, and you play it back on the touch keys. The robot comments in speech.
 
 ```sh
 make APP=simon flash      # on the synth
@@ -13,7 +13,7 @@ just host simon           # or in a window, without the synth
 | Control | Does |
 |---|---|
 | SELECT turn | Before a game: which game |
-| SELECT press | Start. During your turn: hear the melody again, once a round (the robot will have an opinion) |
+| SELECT press | Start. During your turn: hear the melody again, once a round (the robot says "again, really?") |
 | Keys | Play. Any key also starts a game |
 | LFO, FILTER, AMP, ARP | The instrument: pluck, bell, chip, organ |
 | CUTOFF, RESONANCE | The analog filter, from the moment you move them |
@@ -24,8 +24,8 @@ any touch skips it.
 
 Three lives. A wrong note or running out of time (the line under the hearts) costs one,
 and the robot plays the melody again. After your last correct note there is half a
-second of quiet before it answers. Game over: it says your score and what it thinks of
-it, then the band plays the melody you built, round and round.
+second of quiet before it answers. Game over: it says your score and a verdict on it,
+then the band plays the melody you built, repeating.
 
 | Game | Rule |
 |---|---|
@@ -35,17 +35,17 @@ it, then the band plays the melody you built, round and round.
 
 The best score of each game is kept through power-off.
 
-## What makes it musical
+## Melody, band and voice
 
-- **The notes are a tune.** They come from one scale and move by a step or two from the
-  note before, with an occasional leap, and some last twice as long. Five keys are in play
-  at first (C D E G A), seven from round 6, every white key from round 12. The display
-  draws the keyboard as it is printed on the synth; white keys in play carry a mark.
-- **A band plays under it**, in A minor (A minor, F, C, G). It starts as a kick drum and
-  gains a part every two rounds: hat, bass, clap, fast hats, pad. It also speeds up, from
-  99 to 144 beats a minute. The melody always starts on a beat.
-- **The robot sings.** Some taunts are sung on the notes of the melody, others fall or
-  rise like a sneer or a question. Its face is pleased when you miss and sulks when you
+- The notes come from one scale and move by a step or two from the note before, with an
+  occasional leap, and some last twice as long. Five keys are in play at first (C D E G A),
+  seven from round 6, every white key from round 12. The display draws the keyboard as it
+  is printed on the synth; white keys in play carry a mark.
+- A band plays under the melody, in A minor (A minor, F, C, G). It starts as a kick drum
+  and gains a part every two rounds: hat, bass, clap, fast hats, pad. It also speeds up,
+  from 99 to 144 beats a minute. The melody always starts on a beat.
+- The robot sings some taunts on the notes of the melody; in others the pitch falls word
+  by word or rises on the last word. Its face is pleased when you miss and sulks when you
   do not.
 
 ## The display

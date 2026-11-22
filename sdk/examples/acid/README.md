@@ -34,7 +34,7 @@ become that button's pair; the display names them and shows their values.
 
 A knob does nothing after a button is pressed or let go until you move it.
 
-## Everything else
+## Other controls
 
 | Control | Does |
 |---|---|
@@ -56,16 +56,16 @@ the next step, notes are bars whose height is the pitch, kick and hat are the tw
 below, and the line at the bottom is the step being played. The open layer's button is
 lit; LFO, ARP and SETTINGS flash on accents, kicks and hats.
 
-## What makes it acid
+## How the bass sound is made
 
 - **Accent** makes a note louder, opens the filter further, and gives it a short fixed
-  decay. Accents in a row pile up, each opening the filter more than the last.
+  decay. Accents in a row add up, each opening the filter more than the last.
 - **Slide** holds the note through to the next one and glides the pitch there, with no
   new attack and no restart of the envelope.
 - **The filter** is a four-pole ladder with the resonance fed back around it and a soft
-  limit in the loop, so it screams before it whistles. The envelope moves it sample by
-  sample.
+  limit in the loop, so rising resonance distorts first and near the top of the knob the
+  filter oscillates by itself. The envelope moves it sample by sample.
 - **Analog filter mode** bypasses the ladder and drives the synth's own analog filter with
-  the same envelope, 500 times a second. It is the real thing, but the kick and hat go
-  through it too (the synth has one filter, at the output), and how fast it follows the
-  envelope depends on the hardware.
+  the same envelope, 500 times a second. The kick and hat go through it too, because the
+  synth has one filter, at the output. How fast it follows the envelope depends on the
+  hardware.

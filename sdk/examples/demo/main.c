@@ -665,7 +665,6 @@ int main(void) {
     anchor[1] = jt_pot(JT_ADC_RESONANCE);
 
     for (;;) {
-        jt_poll_escape();
         uint32_t ms = (samples - began) / 32;
 
         /* hands: read about every 8 ms, however fast the frames come */

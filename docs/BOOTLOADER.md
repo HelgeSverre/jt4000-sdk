@@ -22,7 +22,7 @@ The chip is read-protected against the debug port (RDP level 1), but code runnin
 
 In this order:
 
-1. **Button check.** Reads PB4 and PA10. If **both are low** (both buttons held at power-on), go to update mode. In the application (`0x08015CC0`), PB4 low toggles menu 1 (OSC) and PA10 low toggles menu 6 (SETTINGS). So the combination is **OSC + SETTINGS held while switching on**. These two buttons are wired straight to the MCU; the other four menu buttons go through the I2C key driver.
+1. **Button check.** Reads PB4 and PA10. If **both are low** (both buttons held at power-on), go to update mode. In the application (`0x08015CC0`), PB4 low toggles menu 1 (OSC) and PA10 low toggles menu 6 (SETTINGS). So the combination is **OSC + SETTINGS held while switching on**. These two buttons are wired straight to the MCU; the other four menu buttons go through the LED/key chip.
 2. **Checksum.** Reads the trailer at `0x0801FFF0`: `length`, `checksum`, `marker`. Sums the bytes from `0x08008000` up to index `length` and compares with `checksum`.
 3. **Update flag.** Reads EEPROM `0x7FC0`. If it is `0xAA`: queue a write of `0x00` to clear it, wait for that write, then go to update mode.
 4. **Start the application** only if all of these hold, otherwise go to update mode:
@@ -36,7 +36,7 @@ Consequences:
 |---|---|
 | A bad checksum, marker or length keeps the synth in update mode | A corrupt or half-written image is recoverable by flashing again |
 | The flag is cleared on *entering* update mode, before any download | An interrupted update doesn't loop on the flag; the bad checksum keeps it in update mode instead |
-| The sum covers only the first `length` bytes | Code placed after `length` isn't covered. Stock images hide this because their padding is zero. Always set `length` to cover everything |
+| The sum covers only the first `length` bytes | Code placed after `length` isn't covered. Stock images don't show this because their padding is zero. Always set `length` to cover everything |
 | `length` must be at least `0x10000` | A small custom image must still declare ≥ 64 KiB (pad with zeros) |
 | Two-button entry is checked before anything else | A hardware way into update mode that needs neither a working application nor the EEPROM flag |
 | No signature, no version check | Any correctly packaged image is accepted (confirmed twice by flashing) |
@@ -59,7 +59,7 @@ bx   <reset vector>
 
 State on arrival: interrupts enabled, SysTick still firing every 1 ms, SYSCLK 170 MHz (HSE crystal → PLL, set up at `0x08004338`), `SP = vector[0] + 8`.
 
-**The pop is a trap for custom firmware.** If `vector[0]` is the very end of RAM (`0x20008000`, the usual choice), the pop reads past the end of memory and the processor faults inside the bootloader. Nothing of the application runs, and the synth looks dead with the update-mode lights still blinking. Stock images avoid it only because their initial SP sits below the end of RAM (`0x20007E40` in 1.1.5).
+If `vector[0]` is the very end of RAM (`0x20008000`, the usual choice), the pop reads past the end of memory and the processor faults inside the bootloader. Nothing of the application runs, and the update-mode lights keep blinking. Stock images avoid the fault because their initial SP sits below the end of RAM (`0x20007E40` in 1.1.5).
 
 Rule: **`vector[0]` must be at most `0x20007FF8`.** The SDK's linker script uses `0x20007FF0` and its reset handler loads SP itself. `tools/flash.py` and `tools/emu.py` refuse images that break the rule.
 
