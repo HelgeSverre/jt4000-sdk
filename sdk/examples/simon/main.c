@@ -12,7 +12,8 @@
  *   CUTOFF, RESONANCE    the analog filter, once you move them
  *   OSC            give up, back to the start
  *
- * The best score of each game is kept through power-off (jt_store_save).
+ * The best score of each game is kept through power-off (jt_store_save). Switching on
+ * shows a splash: the robot's face, zoomed into until the game shows through.
  *
  * BY EAR lights only the first note. BACKWARDS wants the melody played last note first.
  */

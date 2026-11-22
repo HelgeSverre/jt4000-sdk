@@ -58,9 +58,82 @@ too. Mono only.
 - `render(out, n)` runs in an interrupt, every 2 ms. Only arithmetic belongs there:
   display, I2C, delays and MIDI sending belong in the main loop.
 - Share state between the main loop and `render` through plain word-sized variables, and
-  wrap multi-field updates (starting a note) in `cpsid i` / `cpsie i`.
+  wrap multi-field updates (starting a note) in `jt_irq_off()` / `jt_irq_on()`.
 - Compute slow things once per block (pitch, filter coefficients, LFO), fast things per
   sample. `examples/soundbox/main.c` shows the split.
+
+## Controls: what the examples learned
+
+Copy the input code from `examples/simon/main.c` (shortest) or `examples/groove/main.c`
+(modifiers); each rule below is a bug a person found on the synth.
+
+- **Buttons**: a press counts when two readings 8 ms apart agree, and you act on the
+  change, not the level. One raw reading gave double presses of SELECT.
+- **Start-up**: read the inputs a few times before the main loop acts on them. The first
+  readings can show every button held.
+- **SELECT turn**: one click is 8 counts of `jt_encoder()`; keep the remainder.
+- **Touch keys**: poll every 8 to 10 ms; held = two equal readings, released = three empty
+  ones. Fingers brush neighbouring keys, so a wrong touch should cost little.
+- **Knobs**: a knob takes over a value once it has moved about 90 (of 4095) from where it
+  stood when its page opened. Reading it directly makes values jump on a page change, and
+  a cutoff knob left at zero makes a firmware that boots silent.
+- **Two things at once**: hold a button and touch a key, or hold SELECT as shift. Anything
+  that erases work takes a held press with a countdown on the display.
+- **One job per control per page**, the same gesture meaning the same thing on every page,
+  listed in the comment at the top of `main.c` and in the example's README.
+
+## The display: what the examples learned
+
+- When the display points at a control, draw the controls as they lie on the synth. Keys
+  drawn as a row of boxes were read as the wrong keys; drawn as a piano (ten white keys,
+  six black ones on the joins) they were found at once.
+- Show what just happened for long enough to see it: a word while it is spoken, half a
+  second of quiet after the player gets something right before the next thing starts.
+- Text that scrolls is given the time it needs: compute the speed from the length of the
+  text and the length of the scene, or the end is never seen.
+- 17 shades come from a 4 × 4 dither (`SHADE` in `examples/demo/main.c`); `jt_oled_get`
+  lets you draw small, read back and redraw large or dissolve between two pictures.
+
+## Sound: what the examples learned
+
+- **One clock.** Count audio samples in `render` and derive everything from that count:
+  sequencer steps, animation time, timeouts. Pictures then stay on the beat however long
+  a frame takes, and the firmware runs identically in both simulators.
+- **Level.** Sum the voices, multiply by one master gain, `jt_softclip`, then measure the
+  WAV: aim for a peak between 0.7 and 0.95. Loudness judged from the code was wrong more than once (clipping, and a firmware at half level).
+- **Speech** (`jt_lpc.h`) is quiet and mid-heavy: drop the band to about 40 % while
+  `jt_lpc_busy()` and it becomes intelligible. A phrase is a queue of words fed from the
+  main loop; giving each word its own `hz` makes the robot sing.
+- **Echo and reverb** run at 16 kHz (every other sample) to fit the RAM; `examples/demo`
+  and `examples/simon` have the eight lines that do it.
+- **The analog filter's resonance sings on its own at the top of its range.** The owner
+  likes that; leave the full range reachable.
+- **Random** things need a seed that differs per power-on: mix the sample count at the
+  first touch with the knobs' raw readings.
+- Presets and factory patterns you wrote without hearing them are guesses. Say so when
+  you report, and ask which ones to change.
+
+## Testing more than the first screen
+
+- **Play it with a script.** `tools/panel.py` loads the host build as a library; the same
+  four calls (`jt_host_input`, `jt_host_audio`, `jt_host_display`, `jt_host_strict(1)`)
+  work from your own Python, as fast as the computer goes. A 60-line bot that read the lit
+  key off the display and pressed it played `simon` for 13 rounds and found what a
+  screenshot could not. Import `panel` and use `panel.build(app)` and `panel.boot(lib)`.
+- **Then the ARM build**, a few seconds in `tools/emu.py`: no `CPU FAULT`, and the "audio
+  interrupt: worst block" line well under 100 % (the examples sit at 23 to 30 %).
+- **Hardware without a person.** Firmware can report over USB: send a SysEx starting
+  `F0 7D` with `jt_midi_send_sysex` every half second and read it with `mido` after
+  `make flash`. The storage code was checked on the real EEPROM this way.
+- **Pictures**: `just shot <app>` with a `--script` that reaches a telling moment; keep the
+  result as `docs/shots/<app>.png`.
+
+## Finishing an example
+
+Done when: zero warnings for ARM and for `make host`; `just lint` clean; a comment at the
+top of `main.c` listing every control; `examples/<name>/README.md` with a controls table;
+a row in `sdk/README.md`, a line in the main README's quick start, a picture in
+`docs/shots/`; and the person has confirmed it on the synth. Commit when asked.
 
 ## Hardware facts are looked up
 
@@ -107,6 +180,8 @@ and a display routine that is fast in the simulator may still be slow on hardwar
 - `docs/FIRMWARE-MAP.md`: read to stay compatible with stock presets, CC numbers or SysEx.
 - Saving across power-off: `jt_store_*` in `jt4000.h` (see `examples/simon`). Never write the EEPROM
   with `jt_i2c_write` directly: the stock presets and the bootloader's update flag live in it.
+- Speech: `jt_lpc.h`; words come from `examples/<name>/words.txt` through `just words <name>`
+  (see `examples/simon`). Controls and behaviour of each example: its own `README.md`.
 - `docs/HARDWARE.md`: read before adding a driver for anything the SDK does not cover yet.
 
 ## House rules

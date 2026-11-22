@@ -19,8 +19,12 @@ just host simon           # or in a window, without the synth
 | CUTOFF, RESONANCE | The analog filter, from the moment you move them |
 | OSC | Give up, back to the start |
 
+Switching on shows the robot's face, zooms into its mouth and dissolves into the game;
+any touch skips it.
+
 Three lives. A wrong note or running out of time (the line under the hearts) costs one,
-and the robot plays the melody again. Game over: it says your score and what it thinks of
+and the robot plays the melody again. After your last correct note there is half a
+second of quiet before it answers. Game over: it says your score and what it thinks of
 it, then the band plays the melody you built, round and round.
 
 | Game | Rule |

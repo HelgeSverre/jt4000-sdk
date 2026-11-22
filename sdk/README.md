@@ -52,6 +52,7 @@ To return to stock: `uv run ../tools/flash.py flash ../firmware/JT-4000_INTFLASH
 | `jt_poll_escape()` | call in the main loop: OSC + SETTINGS held, or the update-mode SysEx received over USB → update mode |
 | `jt_enter_update_mode()` | set the bootloader's EEPROM flag and reset |
 | `jt_reset()` | system reset |
+| `jt_irq_off()`, `jt_irq_on()` | hold the audio interrupt off around a change it must see whole (starting a note) |
 
 ## Sound blocks (`include/jt_dsp.h`)
 
@@ -66,9 +67,20 @@ Float, one struct and one `next` function per block, no C library.
 | `jt_tape_t` | a loop of recent audio in your own buffer: delays, and the source for grains |
 | `jt_grains_t` | four overlapping slices of the tape replayed at another pitch |
 | `jt_reverb_t` | four cross-fed delay lines, 5 KiB, tuned for a 16 kHz call rate |
-| `jt_exp2`, `jt_note_hz`, `jt_sin`, `jt_rand`, `jt_softclip` | maths helpers |
+| `jt_exp2`, `jt_note_hz`, `jt_sin`, `jt_rand`, `jt_softclip`, `jt_sqrt` | maths helpers |
 
 The DAC feeds the analog filter, so digital effects sit *before* it: closing the cutoff knob also closes the reverb tail.
+
+## Speech (`include/jt_lpc.h`)
+
+LPC speech, the method of the Speak & Spell: about 500 bytes per second of speech, and the
+pitch is not part of a word, so any word can be said or sung at any note.
+
+1. List the words in `examples/<app>/words.txt` (one per line, `NAME = what to say` when they differ).
+2. `just words <app>` (or `uv run --with numpy ../tools/lpcwords.py --list ... --out ...`) writes `words.h`. Needs the [`speak`](https://github.com/HelgeSverre/speak) command.
+3. In the firmware: `jt_lpc_init(&v, LPC_SIN, LPC_GAIN)`, `jt_lpc_say(&v, &WORD_DATA[WORD_AT[n]])` from the main loop, `jt_lpc_block(&v)` once per block and `jt_lpc_next(&v)` per sample in `render`. Set `v.hz`, `v.ratio` (size of the mouth) and `v.speed` at any time.
+
+`jt_lpc_frame` and `jt_lattice_next` give the frames and the vocal-tract filter on their own (`examples/choir`). `examples/simon` and `examples/demo` are the shortest users of the player.
 
 ## Menu (`include/jt_menu.h`)
 

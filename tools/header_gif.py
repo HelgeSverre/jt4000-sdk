@@ -1,85 +1,81 @@
-"""Draw the README header: the sound box's orbit scene on a wide virtual OLED, with a title.
+"""Draw the README header: the display of examples/demo, as a GIF.
 
-Uses the SDK's own 8x8 font and the same orbit maths as sdk/examples/soundbox (draw_motion).
+Runs the demo firmware built for this computer (`make host`), takes a few seconds from
+several of its scenes and draws each display pixel as a small square.
 
-    uv run --with pillow tools/header_gif.py            # writes docs/header.gif
+    uv run --with pillow --with pygame-ce tools/header_gif.py      # writes docs/header.gif
 """
 
 from __future__ import annotations
 
-import math
-import re
+import ctypes
 from pathlib import Path
 
 import cli
+import panel
 
 try:
-    from PIL import Image, ImageDraw
+    from PIL import Image
 except ModuleNotFoundError:
     raise SystemExit(
-        "error: needs Pillow. Run: uv run --with pillow tools/header_gif.py"
+        "error: needs Pillow. Run: uv run --with pillow --with pygame-ce tools/header_gif.py"
     ) from None
 
 ROOT = Path(__file__).resolve().parent.parent
-W, H, SCALE = 224, 56, 4  # logical pixels, and screen pixels per logical pixel
-FRAMES, TRAIL = 60, 14
-TITLE = "JT-4000 CUSTOM FIRMWARE SDK"
-BG, OFF, ON = (10, 12, 16), (20, 24, 30), (214, 236, 255)
+W, H, SCALE, FPS = 128, 32, 6, 20
+BAR_MS = 1875
+# (first bar, bars) of the demo to show: name, cube, plasma, shooter, drums, address, tube, twister
+CUTS = [
+    (1, 1.6),
+    (5, 1.6),
+    (13, 1.2),
+    (28, 2.4),
+    (32, 2),
+    (36.2, 1.6),
+    (44, 1.2),
+    (48, 1.2),
+]
+BG, OFF, ON = (8, 10, 14), (16, 20, 26), (120, 200, 255)
 
 
-def font() -> list[list[int]]:
-    text = (ROOT / "sdk/third_party/font8x8_basic.h").read_text()
-    rows = re.findall(r"\{\s*((?:0x[0-9A-Fa-f]{2},\s*){7}0x[0-9A-Fa-f]{2})\s*\}", text)
-    return [[int(v, 16) for v in r.replace(" ", "").split(",")] for r in rows]
-
-
-def frame(n: int, glyphs: list[list[int]]) -> Image.Image:
-    lit: set[tuple[int, int]] = set()
-
-    def block(x: int, y: int, w: int, h: int) -> None:
-        lit.update((x + i, y + j) for i in range(w) for j in range(h))
-
-    x0 = (W - 8 * len(TITLE)) // 2
-    for i, ch in enumerate(TITLE):
-        for r, bits in enumerate(glyphs[ord(ch)]):
-            lit.update((x0 + 8 * i + c, 4 + r) for c in range(8) if bits >> c & 1)
-
-    cx, cy, rx, ry = W // 2, 35, 92, 15
-
-    def at(angle: float) -> tuple[int, int]:
-        return cx + int(rx * math.cos(2 * math.pi * angle)), cy + int(
-            ry * math.sin(2 * math.pi * angle)
-        )
-
-    for i in range(0, 96, 2):  # the orbit, dotted
-        lit.add(at(i / 96))
-    for k in range(TRAIL * 6):  # where the dot has just been
-        lit.add(at((n - k / 6) / FRAMES))
-    hx, hy = at(n / FRAMES)
-    block(hx - 2, hy - 2, 5, 5)
-    block(cx - 1, cy - 1, 2, 2)
-
+def picture(px) -> Image.Image:
     img = Image.new("RGB", (W * SCALE, H * SCALE), BG)
-    d = ImageDraw.Draw(img)
+    cell = Image.new("RGB", (SCALE - 1, SCALE - 1))
     for y in range(H):
         for x in range(W):
-            colour = ON if (x, y) in lit else OFF
-            d.rectangle(
-                [x * SCALE, y * SCALE, x * SCALE + SCALE - 2, y * SCALE + SCALE - 2],
-                fill=colour,
-            )
+            cell.paste(ON if px[y * W + x] else OFF, (0, 0, SCALE - 1, SCALE - 1))
+            img.paste(cell, (x * SCALE, y * SCALE))
     return img
 
 
 def main() -> None:
-    glyphs = font()
-    frames = [frame(n, glyphs).quantize(colors=8) for n in range(FRAMES)]
+    dll = panel.boot(panel.build("demo"))
+    dll.jt_host_strict(1)
+    dll.jt_host_input(0, 0, 0, 2000, 2000, ctypes.c_int32(0))
+    px = (ctypes.c_uint8 * (W * H))()
+    buf = (ctypes.c_int16 * 64)()
+    wanted = sorted(
+        round((bar * BAR_MS + i * 1000 / FPS) / 2)
+        for bar, bars in CUTS
+        for i in range(int(bars * BAR_MS * FPS / 1000))
+    )
+    frames = []
+    for block in range(wanted[-1] + 1):  # one block of sound is 2 ms
+        dll.jt_host_audio(buf, 64)
+        if block == wanted[len(frames)]:
+            dll.jt_host_display(px)
+            frames.append(picture(px).quantize(colors=4))
     out = ROOT / "docs/header.gif"
     frames[0].save(
-        out, save_all=True, append_images=frames[1:], duration=40, loop=0, optimize=True
+        out,
+        save_all=True,
+        append_images=frames[1:],
+        duration=1000 // FPS,
+        loop=0,
+        optimize=True,
     )
     print(
-        f"wrote {out}: {W * SCALE}x{H * SCALE}, {FRAMES} frames, {out.stat().st_size // 1024} KiB"
+        f"wrote {out}: {W * SCALE}x{H * SCALE}, {len(frames)} frames, {out.stat().st_size // 1024} KiB"
     )
 
 

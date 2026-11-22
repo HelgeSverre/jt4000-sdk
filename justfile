@@ -64,6 +64,11 @@ shot app ms="3000" *args:
 video app ms="8000" out="demo.mp4" *args:
     {{ panel }} {{ app }} --ms {{ ms }} --video {{ out }} {{ args }}
 
+# Redraw the README header
+[group('preview')]
+header:
+    {{ uv }} run --with pillow --with pygame-ce --with numpy tools/header_gif.py
+
 # Run the ARM binary in the simulator
 [group('preview')]
 sim app="hello" *args:

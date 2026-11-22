@@ -10,7 +10,7 @@ Board: `musictribe 0722-ABR`, `PCB303022REVD_01`.
 |---|---|---|---|
 | U1 | **STM32G431KBT6** (Cortex-M4F, 170 MHz, 128 KiB flash, 32 KiB SRAM, LQFP32) | marking `STM32G` / `431KBT6` (clear in the Reddit photo, see below); the video calls it "Arm Cortex-M4" | 128 KiB matches the 32 KiB bootloader + 96 KiB image. No hardware AES (that's the G441), so the firmware cipher runs in software |
 | Y1 | crystal | next to U1 | |
-| U4 | SOIC-8, `2429 SOND…` | near U1 | Likely the "32 KB EEPROM" from the video (presets) |
+| U4 | SOIC-8, `2429 SOND…` | near U1 | The 32 KiB EEPROM (I2C `0x50`, confirmed by capture and by the SDK's `jt_store_*`): presets, settings, update flag; layout in FIRMWARE-MAP.md |
 | U7 | SOIC-8 | right side, between the pots | |
 | U8 | SOT-23 | next to U1 | regulator or supervisor? |
 | U13 | QFN, small | under the cutoff/resonance pots (video) | The video can't identify it; near the analog filter |

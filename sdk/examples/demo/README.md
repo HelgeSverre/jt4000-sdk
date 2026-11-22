@@ -33,7 +33,7 @@ demo again.
 | 25-28 | A turning chequerboard with the sound drawn across it | Everything |
 | 29-32 | A ship shoots the words BOOTLOADER and SYNTH to bits, letter by letter | Everything; the voice drags out one "wee", its pitch thrown around on every 16th |
 | 33-36 | Four drums, and a ball dropping onto each exactly as it sounds | A drum solo: kick, snare, hat, tom |
-| 37-44 | The repository's address on a wave, twice a bar-pair; "free and open source, get the code" | Everything, arpeggio an octave up; a bar of held breath |
+| 37-44 | The repository's address on a wave, once every two bars; "free and open source, get the code" | Everything, arpeggio an octave up; a bar of held breath |
 | 45-48 | Down a tube | The whole song two semitones higher |
 | 49-52 | A twisted bar | The same |
 | 53-56 | "Now you, touch the keys" | Drums gone, the filter closes |

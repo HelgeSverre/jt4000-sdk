@@ -1,15 +1,19 @@
 # JT-4000 Micro: custom firmware
 
-![JT-4000 custom firmware SDK: a dot orbiting on a pixel display](docs/header.gif)
+![The display of the demo firmware: a name out of a starfield, a lit cube, plasma, a ship shooting a word apart, a drum kit played by falling balls](docs/header.gif)
 
 Write your own firmware for the Behringer JT-4000 Micro in C and flash it over the synth's
 own USB port in about three seconds. No SynthTribe, no debug probe, no opening the case.
 
+**[Watch the launch film](https://youtu.be/e9ZN6e1a2sM)** (2 minutes): every example firmware being
+played, to a track made of the firmwares themselves.
+
 This repository holds two things:
 
 - **`sdk/`**: a small C SDK. Display, lights, buttons, knobs, touch keyboard, 32 kHz audio
-  out, the analog filter, USB MIDI, storage that survives power-off, sound building blocks (oscillators, envelopes, filter,
-  delay, grains, reverb) and a menu system.
+  out, the analog filter, USB MIDI, storage that survives power-off, sound building blocks
+  (oscillators, envelopes, filter, delay, grains, reverb), Speak & Spell style speech and a
+  menu system.
 - **The reverse-engineering work behind it** (`docs/`, `tools/`, `ghidra/`): the firmware
   encryption, the bootloader's update protocol, the SysEx commands and the hardware map.
 
@@ -104,7 +108,7 @@ int main(void) {
 }
 ```
 
-The full API is in [`sdk/README.md`](sdk/README.md) and the three headers in `sdk/include/`.
+The full API is in [`sdk/README.md`](sdk/README.md) and the headers in `sdk/include/`.
 
 ## What you are working with
 
@@ -135,16 +139,17 @@ It checks the firmware image before starting it and offers three ways into updat
 So a broken firmware costs a button combination, not a synth. The one thing that could
 do real damage is code that writes to flash below `0x08008000`; the SDK contains none.
 
-Your presets live in a separate memory chip. Custom firmware leaves it alone unless you
-write to it; back up first, on stock firmware, with `uv run tools/sysex.py dump presets -o dumps/all-presets.syx`.
+Your presets live in a separate memory chip (an EEPROM). The SDK's storage functions use
+only a part of it that the stock firmware never touches, so presets survive custom
+firmware. Firmware that writes the chip directly could overwrite them; back up first, on stock firmware, with `uv run tools/sysex.py dump presets -o dumps/all-presets.syx`.
 
 ## Repository map
 
 | Path | Content |
 |---|---|
 | `sdk/` | The SDK, its examples and its own README |
-| `tools/` | `fwfetch.py` (download factory firmware), `flash.py` (flasher), `fwpack.py` (packaging, encryption), `emu.py` (simulator), `sysex.py` (talk to stock firmware), `riff.py` (MIDI file to riff for `examples/trance`), `lpcwords.py` (word list to LPC speech for `examples/speak`), `panel.py` (the synth in a window). They end with a one-line `error:` on failure; set `JT_DEBUG=1` for the traceback |
-| `docs/` | `HARDWARE.md` (pins, parts), `BOOTLOADER.md` (start-up rules, update protocol), `FIRMWARE.md` (image format, encryption), `SYSEX.md`, `FIRMWARE-MAP.md` (stock firmware internals, preset format, CC map) |
+| `tools/` | `fwfetch.py` (download factory firmware), `flash.py` (flasher), `fwpack.py` (packaging, encryption), `emu.py` (simulator), `sysex.py` (talk to stock firmware), `riff.py` (MIDI file to riff for `examples/trance`), `lpcwords.py` (word list to LPC speech: `just words <app>`), `panel.py` (the synth in a window). They end with a one-line `error:` on failure; set `JT_DEBUG=1` for the traceback |
+| `docs/` | `HARDWARE.md` (pins, parts), `BOOTLOADER.md` (start-up rules, update protocol), `FIRMWARE.md` (image format, encryption), `SYSEX.md`, `FIRMWARE-MAP.md` (stock firmware internals, preset format, EEPROM layout, CC map), `VERSIONS.md`, `ROADMAP.md`, `PRIOR-WORK.md`, `shots/` (pictures from `panel.py`) |
 | `firmware/` | Empty until you run `tools/fwfetch.py` (`--all --decrypt` for every version, decrypted, as the Ghidra scripts expect) |
 | `ghidra/` | Scripts and named symbols for reading the stock firmware |
 | `AGENTS.md` | Working rules for AI coding agents |
