@@ -49,6 +49,23 @@ void jt_i2c_init(void);
 bool jt_i2c_write(uint8_t addr7, const uint8_t *data, int n);   /* false if not acknowledged */
 bool jt_i2c_read(uint8_t addr7, uint8_t *data, int n);
 
+/* ---- storage that survives power-off: 24 KiB of the EEPROM ----
+ * The part of the chip the stock firmware never uses, so its presets are left alone and
+ * what you save survives a return to stock. Call from the main loop only (it shares the
+ * bus with the buttons and lights); sound keeps playing meanwhile. Measured: reading takes
+ * 0.4 ms a byte, writing about 50 ms for every 64 bytes that changed. A byte lasts about a
+ * million writes: save when something changes, not on a timer. All four return false when
+ * the chip did not answer or the range does not fit. */
+#define JT_STORE_SIZE 0x6000
+bool jt_store_read(uint16_t at, void *data, int n);
+bool jt_store_write(uint16_t at, const void *data, int n);
+/* A record: n bytes with a name (tag) and a checksum in front, n + 8 bytes at `at`.
+ * jt_store_load leaves `data` untouched and returns false unless a record with this tag
+ * and size was saved there and is intact, so defaults set beforehand stay. */
+#define JT_TAG(a, b, c, d) ((uint32_t)(a) << 24 | (uint32_t)(b) << 16 | (uint32_t)(c) << 8 | (uint32_t)(d))
+bool jt_store_save(uint16_t at, uint32_t tag, const void *data, int n);
+bool jt_store_load(uint16_t at, uint32_t tag, void *data, int n);
+
 /* ---- button lights and scanned buttons ---- */
 #define JT_LED_OSC      0x01
 #define JT_LED_LFO      0x02

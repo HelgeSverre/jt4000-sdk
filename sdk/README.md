@@ -3,8 +3,7 @@
 Build custom firmware for the Behringer JT-4000 Micro in C and flash it over USB, with no
 SynthTribe and no debug probe.
 
-Everything here has run on a real JT-4000 at the full 170 MHz clock. Not written yet:
-preset storage helpers and DIN MIDI.
+Everything here has run on a real JT-4000 at the full 170 MHz clock.
 
 ## Requirements
 
@@ -43,6 +42,8 @@ To return to stock: `uv run ../tools/flash.py flash ../firmware/JT-4000_INTFLASH
 | `jt_keyboard()` | 16 key bits; `jt_keyboard_lowest()` gives the lowest held key |
 | `jt_encoder()` | SELECT knob position |
 | `jt_i2c_write/read` | the bus with the EEPROM and LED/key chip |
+| `jt_store_read/write(at, data, n)` | 24 KiB that survives power-off: the part of the EEPROM the stock firmware never uses, so its presets stay intact. Main loop only; 0.4 ms a byte to read, about 50 ms per 64 changed bytes to write |
+| `jt_store_save/load(at, tag, data, n)` | the same with a name and a checksum in front (n + 8 bytes); `load` leaves `data` alone unless an intact record with that tag is there, so defaults stay |
 | `jt_audio_init(render)` | 12-bit DAC at 32 kHz; `render(out, n)` is called from an interrupt for each 2 ms block |
 | `jt_filter(cutoff, resonance)` | the analog filter, each 0..1000 |
 | `jt_usb_init()` | class-compliant USB-MIDI device "JT-4000 SDK" (`1397:127D`), runs from the USB interrupt |
@@ -90,6 +91,7 @@ plays it. See the main README.
 | `trance` | seven-saw supersaw, trance gate, tempo-synced delay, presets, built-in riffs and arpeggiator that follow the held key; `tools/riff.py` imports MIDI files as extra riffs |
 | `demo` | a demoscene-style demo: a small tracker (kick, clap, hat, bass, arpeggio, lead, pad, a speaking voice) arranged over 56 bars, with a starfield, a shaded cube, plasma, fire, a turning chequerboard, a ship shooting words apart, balls that play a drum solo, a tunnel, a twister and scrollers, all timed from the audio sample count; keys, knobs and SELECT change it while it plays; then a four-voice synth |
 | `acid` | a bassline machine in the manner of the TB-303: 16 steps with accent, slide and octave, a four-pole ladder filter with the envelope applied per sample or the synth's analog filter driven by the same envelope, 16 sounds, kick and hat, random evolution with undo; controls in `examples/acid/README.md` |
+| `simon` | Simon with melodies: the robot plays a tune that grows by a note a round, from a scale that widens as it grows, over a band that gains a part every two rounds; you play it back; it taunts in LPC speech, singing some taunts on the notes you missed; three games (classic, by ear, backwards); best scores kept with `jt_store_save` |
 | `choir` | frozen speech as a pad: a knob moves through an LPC word and stops anywhere, up to four voices sing the mouth shape found there; the display draws the vocal tract as a tube from the reflection coefficients; uses the frame-level API of `jt_lpc.h` |
 | `drone` | an additive drone that always sounds: 16 sine partials per note, the 16 keys edit them, six pages with a picture each, a pulse sequencer on the analog filter, 16 scenes that morph into each other; controls in `examples/drone/README.md` |
 | `groove` | a six-track groovebox: synthesized kick, snare and hat, an acid bass with accent and slide, a lead and an LPC voice track; 16 keys are 16 steps, 16 patterns, tracks that evolve at random with undo, the analog filter over the mix; controls in `examples/groove/README.md` |

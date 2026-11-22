@@ -74,6 +74,7 @@ Read routine: `FUN_08016dc0(offset, buffer, length)`, in 64-byte pages with a 5 
 | Offset | Size | Content |
 |---|---|---|
 | `0x0000` | `0x800` | 32 presets × 64 bytes |
+| `0x1000` | `0x6000` | unused by the stock firmware (read back as `FF` on a factory unit); the SDK's `jt_store_*` keeps its data here |
 | `0x7F40` | `0x40` | global settings block (read at start-up) |
 | `0x7FC0` | 1 | update-mode flag (`0xAA` = enter update mode) |
 

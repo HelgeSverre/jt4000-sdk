@@ -105,6 +105,8 @@ and a display routine that is fast in the simulator may still be slow on hardwar
 - `docs/BOOTLOADER.md`: read before touching `ld/jt4000.ld`, `src/startup.c` or `tools/fwpack.py`.
   The image format has rules that fail silently (the synth stays in update mode).
 - `docs/FIRMWARE-MAP.md`: read to stay compatible with stock presets, CC numbers or SysEx.
+- Saving across power-off: `jt_store_*` in `jt4000.h` (see `examples/simon`). Never write the EEPROM
+  with `jt_i2c_write` directly: the stock presets and the bootloader's update flag live in it.
 - `docs/HARDWARE.md`: read before adding a driver for anything the SDK does not cover yet.
 
 ## House rules

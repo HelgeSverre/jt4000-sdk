@@ -40,10 +40,10 @@ sim: $(BUILD)/$(APP).bin
 # and plays. host/host.c stands in for the hardware drivers.
 HOSTLIB := build/host/$(APP).$(if $(filter Darwin,$(shell uname)),dylib,so)
 host: $(HOSTLIB)
-$(HOSTLIB): src/dsp.c src/lpc.c src/menu.c src/oled.c host/host.c $(wildcard examples/$(APP)/*.c) include/*.h $(wildcard examples/$(APP)/*.h)
+$(HOSTLIB): src/dsp.c src/lpc.c src/menu.c src/oled.c src/store.c host/host.c $(wildcard examples/$(APP)/*.c) include/*.h $(wildcard examples/$(APP)/*.h)
 	@mkdir -p build/host
 	cc -O2 -g -shared -fPIC -DJT_HOST -Dmain=jt_firmware_main -Wall -Wextra -Wno-override-init -Wno-initializer-overrides \
-	   -Iinclude src/dsp.c src/lpc.c src/menu.c src/oled.c host/host.c $(wildcard examples/$(APP)/*.c) -lpthread -o $@
+	   -Iinclude src/dsp.c src/lpc.c src/menu.c src/oled.c src/store.c host/host.c $(wildcard examples/$(APP)/*.c) -lpthread -o $@
 
 new:
 	@test ! -e examples/$(APP) || { echo "examples/$(APP) already exists"; exit 1; }

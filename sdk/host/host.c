@@ -84,8 +84,23 @@ uint8_t jt_keys_raw(uint8_t out[6]) {
 }
 void jt_leds(uint8_t mask) { leds = mask; }
 void jt_leds_raw(uint8_t row4, uint8_t row6) { (void)row6; leds = row4; }
-bool jt_i2c_write(uint8_t addr7, const uint8_t *data, int n) { (void)addr7; (void)data; (void)n; return true; }
-bool jt_i2c_read(uint8_t addr7, uint8_t *data, int n) { (void)addr7; memset(data, 0xFF, (size_t)n); return true; }
+
+/* The EEPROM: the bytes the SDK's store uses, blank at every start. */
+static uint8_t eeprom[0x8000];
+static int eeprom_at = -1;
+static bool eeprom_blank = true;
+bool jt_i2c_write(uint8_t addr7, const uint8_t *data, int n) {
+    if (addr7 != 0x50 || n < 2) return true;
+    if (eeprom_blank) { memset(eeprom, 0xFF, sizeof eeprom); eeprom_blank = false; }
+    eeprom_at = (data[0] << 8 | data[1]) & 0x7FFF;
+    for (int i = 2; i < n; i++) eeprom[(eeprom_at & ~63) | ((eeprom_at + i - 2) & 63)] = data[i];     /* writes wrap in the page */
+    return true;
+}
+bool jt_i2c_read(uint8_t addr7, uint8_t *data, int n) {
+    if (addr7 != 0x50 || eeprom_at < 0 || eeprom_blank) { memset(data, 0xFF, (size_t)n); return true; }
+    for (int i = 0; i < n; i++) data[i] = eeprom[(eeprom_at + i) & 0x7FFF];
+    return true;
+}
 
 uint16_t jt_pot(int n) {
     if (n == JT_ADC_KEYBOARD) return in_keyboard ? 52 : 4095;

@@ -8,7 +8,7 @@ own USB port in about three seconds. No SynthTribe, no debug probe, no opening t
 This repository holds two things:
 
 - **`sdk/`**: a small C SDK. Display, lights, buttons, knobs, touch keyboard, 32 kHz audio
-  out, the analog filter, USB MIDI, sound building blocks (oscillators, envelopes, filter,
+  out, the analog filter, USB MIDI, storage that survives power-off, sound building blocks (oscillators, envelopes, filter,
   delay, grains, reverb) and a menu system.
 - **The reverse-engineering work behind it** (`docs/`, `tools/`, `ghidra/`): the firmware
   encryption, the bootloader's update protocol, the SysEx commands and the hardware map.
@@ -29,6 +29,7 @@ make flash                    # build and flash it to the synth
 make APP=soundbox flash       # an ambient sound box: plays itself; six buttons, two knobs, pictures, no menus
 make APP=trance flash         # supersaw, trance gate, built-in riffs
 make APP=demo flash           # a minute and a half of music, pictures and speech, then a synth to play
+make APP=simon flash          # Simon with melodies: the robot plays, you repeat, it taunts you when you miss
 make APP=acid flash           # a 303-style bassline machine: accent, slide, a ladder filter or the real analog one
 make APP=choir flash          # frozen speech as a pad: park inside a word, four voices sing what is there
 make APP=drone flash          # a drone you sculpt: 16 keys are 16 partials, six pages, 16 scenes that morph
@@ -70,6 +71,7 @@ uv run --with pygame-ce --with numpy tools/panel.py choir --ms 8000 --video choi
 | ![groove](docs/shots/groove.png) `groove` | ![acid](docs/shots/acid.png) `acid` |
 | ![drone](docs/shots/drone.png) `drone` | ![choir](docs/shots/choir.png) `choir` |
 | ![speak](docs/shots/speak.png) `speak` | ![soundbox](docs/shots/soundbox.png) `soundbox` |
+| ![simon](docs/shots/simon.png) `simon` | ![demo](docs/shots/demo.png) `demo` |
 
 The window is for playing, demos and pictures. It is the firmware's real code, but not the
 real hardware: the analog filter is a digital stand-in and USB is absent. `tools/emu.py`
@@ -119,7 +121,7 @@ Two consequences shape most designs. The analog filter comes **after** the DAC, 
 filters everything, digital effects included. And 32 KiB of RAM means about half a second
 of delay memory at 16 kHz, not seconds of sampling.
 
-Everything in the SDK has run on a real JT-4000. Not written yet: preset storage helpers and DIN MIDI.
+Everything in the SDK has run on a real JT-4000.
 
 ## Safety and recovery
 
