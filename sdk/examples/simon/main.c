@@ -28,7 +28,8 @@
 enum { KICK = 1, HAT = 2, BASS = 4, CLAP = 8, HAT16 = 16, PAD = 32, SONG = 64 };
 enum { CLASSIC, EAR, REVERSE, MODES };
 static const char *const MODE_NAME[MODES] = {"CLASSIC", "BY EAR", "BACKWARDS"};
-enum { MENU, TALK, SHOW, TURN, OVER };
+enum { SPLASH, MENU, TALK, SHOW, TURN, WON, OVER };
+#define SPLASH_MS 2700
 enum { NEUTRAL, GLEE, SULK };
 static const char *const TIMBRE_NAME[4] = {"PLUCK", "BELL", "CHIP", "ORGAN"};
 
@@ -342,7 +343,7 @@ static void to_menu(void) {
 }
 
 static void start(uint32_t ms) {
-    static const char *const HELLO[MODES] = {"HELLO HUMAN REPEAT AFTER ME", "LISTEN HUMAN", "REPEAT AFTER ME BACKWARDS"};
+    static const char *const HELLO[MODES] = {"REPEAT AFTER ME", "LISTEN HUMAN", "REPEAT AFTER ME BACKWARDS"};
     seed ^= samples * 2654435761u + jt_pot(JT_ADC_CUTOFF) + ((uint32_t)jt_pot(JT_ADC_RESONANCE) << 12);
     len = 0;
     lives = 3;
@@ -384,7 +385,7 @@ static void round_won(uint32_t ms) {
     else if (len == 15) say("I HATE YOU");
     else if (len == 1 || rnd() % 3 == 0) say(pick(GRUDGE, 7));
     add_note();
-    talk_then(SHOW, ms, 800);
+    talk_then(SHOW, ms, 1100);
 }
 
 static void fail(uint32_t ms, bool slow) {
@@ -413,7 +414,7 @@ static void press(int k, uint32_t ms) {     /* a key, during your turn */
     deadline = ms + 3500;
     warned = false;
     turn_began = ms;
-    if (pos == len) round_won(ms);
+    if (pos == len) { state = WON; hold_until = ms + 500; }      /* let the last note ring before anything answers */
 }
 
 /* ---- the screen ---- */
@@ -494,7 +495,7 @@ static void keyboard(uint16_t held, uint32_t ms) {
 #undef SOUNDING
 }
 
-static void draw(uint32_t ms, uint16_t held) {
+static void compose(uint32_t ms, uint16_t held) {
     static const uint8_t HEART[6] = {0x36, 0x7F, 0x7F, 0x3E, 0x1C, 0x08};
     char top[17], *t = top;
     jt_oled_clear();
@@ -504,6 +505,7 @@ static void draw(uint32_t ms, uint16_t held) {
     else if (ms < name_until) copy(top, TIMBRE_NAME[timbre]);
     else if (state == MENU) copy(top, ms / 2000 & 1 ? "PRESS SELECT" : "SIMON SAYS");
     else if (state == TURN) copy(top, mode == REVERSE ? "BACKWARDS!" : "YOUR TURN");
+    else if (state == WON) copy(top, "CORRECT");
     else if (state == OVER) { t = copy(top, "SCORE "); number(t, score); }
     else { t = copy(top, "ROUND "); number(t, len); }
     jt_oled_text(20, 0, top);
@@ -523,9 +525,9 @@ static void draw(uint32_t ms, uint16_t held) {
             for (int r = 0; r < 6; r++)
                 for (int c = 0; c < 7; c++)
                     if (i < lives ? HEART[r] >> (6 - c) & 1 : r == 2 && c == 3) jt_oled_pixel(20 + 9 * i + c, 9 + r, true);
-        int done = state == TURN ? pos : show == 2 ? show_i : state == SHOW ? 0 : 0;
+        int done = state == TURN || state == WON ? pos : show == 2 ? show_i : state == SHOW ? 0 : 0;
         for (int i = 0; i < len; i++) {     /* the melody as ticks: tall once played */
-            bool tall = state == TURN && mode == REVERSE ? i >= len - done : i < done;
+            bool tall = (state == TURN || state == WON) && mode == REVERSE ? i >= len - done : i < done;
             block(49 + 2 * i, tall ? 9 : 13, 1, tall ? 5 : 1);
         }
         if (lit_hidden && samples - lit_at < lit_for) jt_oled_text(120, 0, "?");
@@ -535,7 +537,41 @@ static void draw(uint32_t ms, uint16_t held) {
         }
     }
     keyboard(state == SHOW ? 0 : held, ms);
-    jt_oled_flush();
+}
+
+/* Switching on: the robot's face, then into its mouth, which dissolves into the game. */
+static void splash(uint32_t ms, uint16_t held) {
+    static const uint8_t BAYER[4][4] = {{0, 8, 2, 10}, {12, 4, 14, 6}, {3, 11, 1, 9}, {15, 7, 13, 5}};
+    static uint16_t src[16];
+    static uint8_t snap[JT_OLED_H][JT_OLED_W / 8];
+    jt_oled_clear();
+    face(ms);                               /* drawn small, read back, then drawn large */
+    for (int y = 0; y < 16; y++) {
+        src[y] = 0;
+        for (int x = 0; x < 16; x++) src[y] |= (uint16_t)(jt_oled_get(x, y) << x);
+    }
+    jt_oled_clear();
+    int t = ms < 600 ? 0 : ms > 2100 ? 1500 : (int)ms - 600;
+    int zoom = 32 + t * t / 9000;           /* in 16ths: twice the size, speeding up to seventeen times */
+    int focus = 8 * 16 + 60 * t / 1500;     /* from the middle of the face down to the mouth */
+    for (int y = 0; y < JT_OLED_H; y++)
+        for (int x = 0; x < JT_OLED_W; x++) {
+            int u = ((x - 64) * 256 + 4096 * zoom) / zoom - 4096 + 8 * 16, v = ((y - 16) * 256 + 4096 * zoom) / zoom - 4096 + focus;
+            if (u >= 0 && u < 256 && v >= 0 && v < 256 && (src[v >> 4] >> (u >> 4) & 1)) jt_oled_pixel(x, y, true);
+        }
+    if (!t) { jt_oled_text(6, 12, "SIMON"); jt_oled_text(90, 12, "SAYS"); }
+    if (ms > 2100) {                        /* the game shows through, a few more pixels each frame */
+        int level = (int)(ms - 2100) * 17 / (SPLASH_MS - 2100);
+        for (int y = 0; y < JT_OLED_H; y++)
+            for (int x = 0; x < JT_OLED_W; x++) {
+                if (!(x & 7)) snap[y][x >> 3] = 0;
+                snap[y][x >> 3] |= (uint8_t)(jt_oled_get(x, y) << (x & 7));
+            }
+        compose(ms, held);
+        for (int y = 0; y < JT_OLED_H; y++)
+            for (int x = 0; x < JT_OLED_W; x++)
+                if (BAYER[y & 3][x & 3] >= level) jt_oled_pixel(x, y, snap[y][x >> 3] >> (x & 7) & 1);
+    }
 }
 
 /* bit 0 OSC, 1 LFO, 2 FILTER, 3 AMP, 4 ARP, 6 SELECT; a button counts after two readings */
@@ -570,6 +606,8 @@ int main(void) {
     jt_filter(1000, 0);
     jt_store_load(0, BEST_TAG, best, sizeof best);
     to_menu();
+    state = SPLASH;
+    say("HELLO HUMAN");
     jt_audio_init(render);
     jt_usb_init();
     enc_last = jt_encoder();
@@ -606,8 +644,11 @@ int main(void) {
                 }
             mouth();
 
-            if ((pressed & 1) && state != MENU) to_menu();
+            if ((pressed & 1) && state > MENU) to_menu();
             else switch (state) {
+            case SPLASH:
+                if (ms >= SPLASH_MS || (pressed & 64) || fresh >= 0) state = MENU;      /* any touch skips it */
+                break;
             case MENU:
                 if (steps) mode = ((mode + steps) % MODES + MODES) % MODES;
                 if ((pressed & 64) || fresh >= 0) start(ms);
@@ -641,6 +682,9 @@ int main(void) {
                     say(pick(NAG, 4));
                 }
                 break;
+            case WON:
+                if (ms >= hold_until) round_won(ms);
+                break;
             case OVER:
                 if (!talking() && !(layers & SONG) && ms - over_at > 800) layers |= SONG;   /* your melody, with the whole band */
                 if (((pressed & 64) || fresh >= 0) && ms - over_at > 1500) to_menu();
@@ -651,6 +695,8 @@ int main(void) {
         bool flash = ms < flash_until;
         jt_oled_invert(flash);
         jt_leds((uint8_t)(flash ? 0x3F : state == TURN ? (1u << lives) - 1 : kick_level > 0.5f ? 0x3F : 0));
-        draw(ms, stable);
+        if (state == SPLASH) splash(ms, stable);
+        else compose(ms, stable);
+        jt_oled_flush();
     }
 }
