@@ -357,6 +357,12 @@ def main() -> None:
         help="keyboard bits in hex, 8000 = lowest key",
     )
     p.add_argument("--wav", help="write the DAC output to this WAV file")
+    p.add_argument(
+        "--cutoff", type=int, help="CUTOFF knob reading, 0..4095 (default 4095)"
+    )
+    p.add_argument(
+        "--resonance", type=int, help="RESONANCE knob reading, 0..4095 (default 0)"
+    )
     a = p.parse_args()
     with open(a.image, "rb") as f:
         image = f.read()
@@ -374,6 +380,10 @@ def main() -> None:
             "       encrypted .cry.bin."
         )
     b = Board(image, a.osc, a.settings)
+    if a.cutoff is not None:
+        b.pots[3] = max(0, min(4095, a.cutoff))
+    if a.resonance is not None:
+        b.pots[4] = max(0, min(4095, a.resonance))
     if a.key or a.kb:
         b.pots[15] = 52
         b.kb = a.kb or 0x8000

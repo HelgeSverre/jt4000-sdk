@@ -81,7 +81,7 @@ wait turns a small bug into a synth that looks dead.
 ## What the simulator does and does not show
 
 `tools/emu.py` models the CPU, display, lights, buttons, touch keyboard and the audio
-path; the knobs read as fixed values. USB and exact timing are outside it: USB code is tested on the synth only,
+path; the knobs read as fixed values (`--cutoff`, `--resonance`). USB and exact timing are outside it: USB code is tested on the synth only,
 and a display routine that is fast in the simulator may still be slow on hardware. Read
 `uv run --with unicorn ../tools/emu.py --help` for the inputs you can hold.
 

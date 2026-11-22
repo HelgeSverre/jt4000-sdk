@@ -81,6 +81,7 @@ Describe up to six pages (one per panel button) as tables of items that point at
 | `tone` | one oscillator, keyboard, USB MIDI notes and CCs |
 | `soundbox` | an ambient sound box with no text: a generator plays notes from a scale, six buttons open six animated scenes, the two knobs shape the open one; echo, grains, reverb, boot animation |
 | `trance` | seven-saw supersaw, trance gate, tempo-synced delay, presets, built-in riffs and arpeggiator that follow the held key; `tools/riff.py` imports MIDI files as extra riffs |
+| `speak` | a talking typewriter: 267 words of LPC speech (the Speak & Spell method) that can be said at any note, chained into a sentence, edited with a cursor and played back; a two-row display, debounced buttons, a voice settings page; controls in `examples/speak/README.md` |
 
 ## Rules the bootloader imposes
 
