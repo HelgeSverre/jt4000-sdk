@@ -144,7 +144,13 @@ The full API is in [`sdk/README.md`](sdk/README.md) and the headers in `sdk/incl
 The analog filter comes after the DAC, so it filters everything, digital effects included.
 32 KiB of RAM holds about half a second of delay memory at 16 kHz.
 
-Everything in the SDK has run on a real JT-4000.
+Everything in the SDK has run on a real JT-4000 Micro.
+
+The JT-4000M (the version with a MIDI socket) has the same processor and firmware format. An
+SDK image detects it at start-up, moves the display's data/command line to the JT-4000M's pin
+and delivers the socket's MIDI through `jt_midi_get`. This is built from the JT-4000M's stock
+firmware and runs in the simulator (`tools/emu.py --board m`); it has not been tried on a
+JT-4000M. `tools/flash.py` refuses to put one synth's stock firmware on the other.
 
 ## Safety and recovery
 

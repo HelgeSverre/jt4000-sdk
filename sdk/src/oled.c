@@ -12,7 +12,6 @@ uint8_t jt_oled_fb[JT_OLED_W * JT_OLED_H / 8];      /* the host build shows this
 #define PIN(n) (1u << (n))
 #define RST PIN(5)
 #define CS  PIN(6)
-#define DC  PIN(15)
 #define MOSI PIN(7)
 #define SCK PIN(3)      /* on GPIOB */
 
@@ -32,8 +31,15 @@ static void spi_byte(uint8_t b) {
         GPIOB->BSRR = SCK << 16;
     }
 }
+/* Data/command: PA15 on the JT-4000 Micro, PB0 on the JT-4000M (see board.c). */
+static gpio_t *dc_port = GPIOA;
+static uint32_t dc_pin = PIN(15);
+static void dc(bool data) {
+    dc_port->BSRR = data ? dc_pin : dc_pin << 16;
+}
 static void cmd(uint8_t c) {
-    GPIOA->BSRR = (CS | DC) << 16;
+    GPIOA->BSRR = CS << 16;
+    dc(false);
     spi_byte(c);
     GPIOA->BSRR = CS;
 }
@@ -43,6 +49,7 @@ void jt_oled_init(void) {
         0xAE, 0x20, 0x00, 0xB0, 0xC8, 0x00, 0x10, 0x40, 0x81, 0xFF, 0xA1, 0xA6, 0xA8, 0x1F,
         0xA4, 0xD3, 0x00, 0xD5, 0xF0, 0xD9, 0x22, 0xDA, 0x02, 0xDB, 0x20, 0x8D, 0x14, 0xAF,
     };
+    if (jt_board() == JT_BOARD_M) { dc_port = GPIOB; dc_pin = PIN(0); }
     GPIOB->BSRR = SCK << 16;
     GPIOA->BSRR = CS;
     GPIOA->BSRR = RST << 16;
@@ -110,7 +117,7 @@ void jt_oled_flush(void) {
         cmd(0x00);
         cmd(0x10);
         GPIOA->BSRR = CS << 16;
-        GPIOA->BSRR = DC;
+        dc(true);
         for (int i = 0; i < JT_OLED_W; i++) spi_byte(fb[page * JT_OLED_W + i]);
         GPIOA->BSRR = CS;
     }

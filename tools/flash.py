@@ -1,4 +1,4 @@
-"""Flash a firmware image to the JT-4000 without SynthTribe.
+"""Flash a firmware image to the JT-4000 Micro or JT-4000M without SynthTribe.
 
 Speaks the bootloader's serial protocol (ST AN3155 style, read from the bootloader's
 handler at 0x08003C40):
@@ -21,6 +21,7 @@ in order, from 0x08008000, in multiples of 8 bytes.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import time
 
@@ -35,22 +36,49 @@ from sysex import HEADER, PORT_HINTS
 ACK, NACK = 0x79, 0x1F
 BASE = 0x08008000
 CHUNK = 32
-VID, PID = 0x1397, 0x127E  # Behringer, "JT-4000 MICRO BOOTLOADER"
+VID = 0x1397  # Behringer
+# Bootloader USB product IDs. 127E: "JT-4000 MICRO BOOTLOADER" (verified). 12C8: the
+# JT-4000M's, from SynthTribe's device list (Devices/JT-4000 MICRO/config.json); not yet
+# seen on a synth.
+PIDS = (0x127E, 0x12C8)
 CHIP_ID = bytes([0x01, 0x04, 0x21])
-INFO_PREFIX = (
-    b"BE_P0EJW_BOOT"  # the JT-4000 Micro's bootloader; a version digit follows
-)
+# The info string: BE_ + product code + _BOOT + a version digit. The JT-4000 Micro's is
+# BE_P0EJW_BOOT9 (verified). The JT-4000M's product code is not known, so any code is
+# accepted; the USB ID and the chip ID still have to match.
+INFO = re.compile(rb"BE_P0[0-9A-Z]{3}_BOOT")
 
 
 def find_serial() -> str | None:
     """The JT-4000 bootloader's serial port. Other Behringer devices are ignored."""
-    found = [p.device for p in list_ports.comports() if (p.vid, p.pid) == (VID, PID)]
+    found = [p.device for p in list_ports.comports() if p.vid == VID and p.pid in PIDS]
     if len(found) > 1:
         sys.exit(
             f"{len(found)} JT-4000 bootloaders are connected ({', '.join(found)}). "
             "Leave only the one to flash plugged in."
         )
     return found[0] if found else None
+
+
+def stock_model(plain: bytes) -> int | None:
+    """The bootloader product ID a factory image belongs to, from the name it shows at
+    start-up; None for custom firmware, which finds out at run time which synth it is on."""
+    if b"JT-4000M MICRO" in plain:
+        return 0x12C8
+    if b"JT-4000 MICRO" in plain:
+        return 0x127E
+    return None
+
+
+def check_model(dev: str, want: int | None) -> None:
+    """Refuse to put one synth's factory firmware on the other: the display and the MIDI
+    socket are wired to different pins. Nothing has been erased when this refuses."""
+    pid = next((p.pid for p in list_ports.comports() if p.device == dev), None)
+    if want is not None and pid is not None and pid != want:
+        name = {0x127E: "JT-4000 Micro", 0x12C8: "JT-4000M"}
+        sys.exit(
+            f"refusing: this is factory firmware for the {name[want]}, and the synth on "
+            f"{dev} is a {name.get(pid, hex(pid))}. Nothing was erased."
+        )
 
 
 def midi_out_name() -> str | None:
@@ -162,7 +190,7 @@ class Boot:
                 f"error: the bootloader on {self.s.port} does not answer ({e}).\n"
                 "       Switch the synth off and on, then try again. Nothing was erased."
             )
-        if chip != CHIP_ID or not info.startswith(INFO_PREFIX):
+        if chip != CHIP_ID or not INFO.match(info):
             sys.exit(
                 f"error: {self.s.port} does not answer like a JT-4000 bootloader "
                 f"(chip id {chip.hex(' ')}, info {info!r}). Nothing was erased."
@@ -218,8 +246,9 @@ def wait_for_application(boot: Boot, wait: float = 8.0) -> None:
     )
 
 
-def load(path: str) -> bytes:
-    """Return the encrypted image, packing a plain one if needed. Refuse bad trailers."""
+def load(path: str) -> tuple[bytes, int | None]:
+    """Return the encrypted image, packing a plain one if needed, and the synth a factory
+    image is for (see stock_model). Refuse bad trailers."""
     with open(path, "rb") as f:
         raw = f.read()
     if len(raw) != SIZE:
@@ -257,7 +286,7 @@ def load(path: str) -> bytes:
         sys.exit(
             "refusing: non-zero bytes after 'length' are not covered by the checksum"
         )
-    return enc
+    return enc, stock_model(plain)
 
 
 def cmd_info(_a) -> None:
@@ -269,8 +298,10 @@ def cmd_info(_a) -> None:
 
 
 def cmd_flash(a) -> None:
-    enc = load(a.file)
-    b = Boot(enter_update_mode())
+    enc, want = load(a.file)
+    dev = enter_update_mode()
+    check_model(dev, want)
+    b = Boot(dev)
     chip, info = b.identify()
     print(f"bootloader: {info.decode('ascii', 'replace')}, chip id {chip.hex(' ')}")
     stage = "erasing"

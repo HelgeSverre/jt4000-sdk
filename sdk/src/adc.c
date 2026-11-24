@@ -1,5 +1,6 @@
 /* The three analog inputs on ADC1: PA2 (channel 3, cutoff knob), PA3 (channel 4,
- * resonance knob), PB0 (channel 15, keyboard sense line).
+ * resonance knob), PB0 (channel 15, keyboard sense line; on a JT-4000M PB0 is the display's
+ * data/command output instead, and jt_pot reports that input as idle).
  *
  * The converter free-runs through the three channels in a fixed order and DMA1 channel 2
  * stores each result in its own slot, so jt_pot() only reads memory. An earlier version
@@ -34,7 +35,7 @@ void jt_adc_init(void) {
     RCC_AHB2ENR |= (1u << 13) | 3u;                 /* ADC12, GPIOA, GPIOB */
     (void)RCC_AHB2ENR;
     GPIOA->MODER |= (3u << 4) | (3u << 6);          /* PA2, PA3 analog */
-    GPIOB->MODER |= 3u;                             /* PB0 analog */
+    if (jt_board() != JT_BOARD_M) GPIOB->MODER |= 3u;       /* PB0 analog */
 
     ADC12_CCR = (ADC12_CCR & ~(3u << 16)) | (3u << 16);   /* clock = HCLK / 4 */
     ADC1_CR = 0;                                    /* leave deep power-down */
@@ -63,5 +64,6 @@ void jt_adc_init(void) {
 }
 
 uint16_t jt_pot(int n) {
+    if (n == JT_ADC_KEYBOARD && jt_board() == JT_BOARD_M) return 4095;
     return n >= 0 && n < JT_POTS ? value[n] : 0;
 }

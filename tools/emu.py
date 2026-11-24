@@ -5,6 +5,8 @@ A minimal model of the board, enough for firmware bring-up:
   - RCC ready flags, SysTick COUNTFLAG (each poll advances time by 1 ms)
   - GPIOA/GPIOB, with the OLED's bit-banged SPI decoded into an SSD1306 model
   - OSC (PB4) and SETTINGS (PA10) buttons
+  - --board m: a JT-4000M, with the display's data/command line on PB0 and the MIDI
+    socket (USART2 receive on PA15 through DMA1 channel 3)
 
     uv run --with unicorn tools/emu.py sdk/build/hello/hello.bin
     uv run --with unicorn tools/emu.py sdk/build/hello/hello.bin --ms 500 --osc --settings
@@ -107,7 +109,7 @@ class Oled:
 
 
 class Board:
-    def __init__(self, image: bytes, osc: bool, settings: bool):
+    def __init__(self, image: bytes, osc: bool, settings: bool, m: bool = False):
         self.uc = uc = Uc(UC_ARCH_ARM, UC_MODE_THUMB | UC_MODE_MCLASS)
         uc.mem_map(0x08000000, 0x20000)
         uc.mem_map(RAM, 0x8000)
@@ -122,10 +124,18 @@ class Board:
         )  # pretend the PLL is the clock
         self.oled = Oled()
         self.odr = {GPIOA: 0, GPIOB: 0}
+        # What the pins read as inputs. JT-4000 Micro: PA15 goes to the display only (low
+        # under a pull-down), PB0 is the keyboard's key-down line (high). JT-4000M: PA15
+        # is the MIDI receiver (idle high), PB0 goes to the display only (low).
+        self.m = m
         self.idr = {
-            GPIOA: 0xFFFF & ~(0x400 if settings else 0),
-            GPIOB: 0xFFFF & ~(0x10 if osc else 0),
+            GPIOA: 0xFFFF & ~(0x400 if settings else 0) & ~(0 if m else 0x8000),
+            GPIOB: 0xFFFF & ~(0x10 if osc else 0) & ~(1 if m else 0),
         }
+        self.socket: tuple[int, int] | None = (
+            None  # MIDI socket DMA ring: address, length
+        )
+        self.socket_at = 0
         self.shift = self.bits = 0
         self.i2c: list[int] = []
         self.i2c_bits: list[int] = []
@@ -221,9 +231,8 @@ class Board:
                 self.bits += 1
                 if self.bits == 8:
                     self.bits = 0
-                    (self.oled.data if self.odr[GPIOA] & 0x8000 else self.oled.command)(
-                        self.shift
-                    )
+                    dc = self.odr[GPIOB] & 1 if self.m else self.odr[GPIOA] & 0x8000
+                    (self.oled.data if dc else self.oled.command)(self.shift)
             if base == GPIOB and (old ^ new) & 0x180:  # I2C on PB7 (SDA) / PB8 (SCL)
                 sda_o, scl_o, sda_n, scl_n = (
                     old >> 7 & 1,
@@ -318,6 +327,9 @@ class Board:
             )  # sequence, DMA1 ch2 target
             self.adc_dma = (sqr, dst)
             self.adc_refresh()
+        if addr == 0x40020030 and value & 1 and self.r32(0x40020038) == 0x40004424:
+            self.socket = (self.r32(0x4002003C), self.r32(0x40020034))  # DMA1 channel 3
+            self.socket_at = 0
         if addr == AIRCR and value & 4:
             self.reset = True
             self.log.append(f"{self.ms:5d} ms  system reset requested")
@@ -331,6 +343,31 @@ class Board:
         for i in range((sqr & 15) + 1):
             ch = sqr >> (6 + 6 * i) & 31
             self.uc.mem_write(dst + 2 * i, struct.pack("<H", self.pots.get(ch, 0)))
+
+    def midi_in(self, data: bytes) -> None:
+        """Bytes arriving at the JT-4000M's MIDI socket, stored as its DMA would."""
+        why = None
+        if not self.m:
+            why = "this board has no MIDI socket (run with --board m)"
+        elif not self.socket:
+            why = "the firmware has not set up DMA1 channel 3 for USART2"
+        elif self.r32(0x40004400) & 5 != 5 or not self.r32(0x40004408) & 0x40:
+            why = "USART2 is not receiving (CR1 UE and RE, CR3 DMAR)"
+        elif self.r32(GPIOA) >> 30 != 2 or self.r32(GPIOA + 0x24) >> 28 != 7:
+            why = "PA15 is not set to USART2_RX (alternate function 7)"
+        elif abs(170_000_000 / max(self.r32(0x4000440C), 1) - 31250) > 600:
+            why = f"baud rate divider {self.r32(0x4000440C)} is not 31250 baud"
+        if why:
+            self.log.append(
+                f"{self.ms:5d} ms  MIDI socket: {data.hex(' ')} lost: {why}"
+            )
+            return
+        ring, size = self.socket
+        for b in data:
+            self.uc.mem_write(ring + self.socket_at, bytes([b]))
+            self.socket_at = (self.socket_at + 1) % size
+        self.w32(0x40020034, size - self.socket_at)  # DMA_CNDTR3 counts down
+        self.log.append(f"{self.ms:5d} ms  MIDI socket: {data.hex(' ')}")
 
     def on_block(self, uc, addr, size, user):
         if self.irq_bytes is not None:
@@ -366,7 +403,7 @@ class Board:
     }
 
     def act(self, action: str) -> None:
-        """One scripted input: +lfo, -lfo, enc+16, kb=8000, key=3, cutoff=2000, shot."""
+        """One scripted input: +lfo, -lfo, enc+16, kb=8000, key=3, cutoff=2000, midi=903c64, shot."""
         name = action.lstrip("+-")
         down = action.startswith("+")
         if action == "shot":
@@ -381,6 +418,13 @@ class Board:
         ):  # touch keys by number, 0 = lowest; "key=" lets go
             self.kb = sum(0x8000 >> int(k) for k in action[4:].split("+") if k)
             self.pots[15] = 52 if self.kb else 4095
+        elif action.startswith("midi="):
+            try:
+                self.midi_in(bytes.fromhex(action[5:]))
+            except ValueError:
+                sys.exit(
+                    f"error: --script: '{action}' is not hex bytes, e.g. midi=903c64"
+                )
         elif action.startswith("cutoff="):
             self.pots[3] = int(action[7:])
         elif action.startswith("resonance="):
@@ -439,6 +483,12 @@ def main() -> None:
         type=lambda s: int(s, 16),
         help="keyboard bits in hex, 8000 = lowest key",
     )
+    p.add_argument(
+        "--board",
+        choices=("micro", "m"),
+        default="micro",
+        help="micro: JT-4000 Micro (default). m: JT-4000M, which has a MIDI socket",
+    )
     p.add_argument("--wav", help="write the DAC output to this WAV file")
     p.add_argument(
         "--script",
@@ -446,7 +496,8 @@ def main() -> None:
         help="timed inputs, 'ms action' separated by ';'. Actions: +lfo -lfo (press, release; "
         "also filter amp arp select osc settings), tap=lfo (press for 80 ms), enc+16 enc-8 "
         "(turn SELECT; 8 counts is one step in the examples), key=3 or key=0+4 (touch keys, "
-        "0 = lowest; 'key=' lets go), cutoff=2000 resonance=0 (knobs), shot (print the display)",
+        "0 = lowest; 'key=' lets go), cutoff=2000 resonance=0 (knobs), midi=903c64 (hex bytes "
+        "into the MIDI socket; needs --board m), shot (print the display)",
     )
     p.add_argument(
         "--cutoff", type=int, help="CUTOFF knob reading, 0..4095 (default 4095)"
@@ -470,7 +521,7 @@ def main() -> None:
             "       The simulator takes the plain image (build/<app>/<app>.bin), not the\n"
             "       encrypted .cry.bin."
         )
-    b = Board(image, a.osc, a.settings)
+    b = Board(image, a.osc, a.settings, a.board == "m")
     for item in filter(None, (x.strip() for x in a.script.split(";"))):
         try:
             when, action = item.split()

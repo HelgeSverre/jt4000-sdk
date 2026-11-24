@@ -1,5 +1,6 @@
 /* JT-4000 Micro SDK: board support for custom firmware.
- * Hardware facts come from the reverse-engineered stock firmware 1.1.5; see ../docs. */
+ * Hardware facts come from the reverse-engineered stock firmware 1.1.5 (JT-4000 Micro) and
+ * 1.1.6 (JT-4000M Micro); see ../docs. One image runs on both synths. */
 #ifndef JT4000_H
 #define JT4000_H
 
@@ -11,6 +12,15 @@ void jt_init(void);               /* 170 MHz clock, GPIO, display, panel, pots, 
 extern uint32_t jt_clock_hz;      /* current core clock */
 void jt_delay_ms(uint32_t ms);
 void jt_reset(void);              /* system reset */
+
+/* Which synth this is. The JT-4000M has a MIDI socket; to make room for it, its display's
+ * data/command line is on another pin and the keyboard's key-down line is not connected.
+ * jt_gpio_init (part of jt_init) finds out by reading two pins as inputs, before it drives
+ * either; jt_board() returns JT_BOARD_MICRO until then. Build with
+ * DEFS=-DJT_BOARD_FORCE=JT_BOARD_M (or JT_BOARD_MICRO) to skip the test. */
+#define JT_BOARD_MICRO 0          /* JT-4000 Micro */
+#define JT_BOARD_M     1          /* JT-4000M Micro */
+int jt_board(void);
 
 /* The steps of jt_init, exposed for bring-up tests. */
 void jt_clock_170mhz(void);       /* HSE crystal + PLL; a no-op when the bootloader left it running */
@@ -88,7 +98,8 @@ uint8_t jt_keys_raw(uint8_t out[6]);              /* key-scan bytes; returns byt
 #define JT_POTS 3
 #define JT_ADC_CUTOFF    0                 /* PA2, ADC channel 3: cutoff knob */
 #define JT_ADC_RESONANCE 1                 /* PA3, ADC channel 4: resonance knob */
-#define JT_ADC_KEYBOARD  2                 /* PB0, ADC channel 15: 4095 idle, about 52 while any key is held */
+#define JT_ADC_KEYBOARD  2                 /* PB0, ADC channel 15: 4095 idle, about 52 while any key is held.
+                                            * JT-4000M: not connected, always reads 4095; use jt_keyboard() */
 void jt_adc_init(void);
 uint16_t jt_pot(int n);
 
@@ -130,9 +141,16 @@ int32_t jt_encoder(void);                         /* running count, about 200 pe
  * stock "reboot to update mode" SysEx (F0 00 20 32 00 01 38 02 F7), which `make flash`
  * sends: the synth restarts into update mode whatever the main loop is doing. */
 void jt_usb_init(void);
-/* One received USB-MIDI event: ev[0] & 0x0F is the kind (8 note off, 9 note on, 0xB
- * controller, 0xE pitch bend, 4..7 SysEx pieces), ev[1..3] the MIDI bytes. */
+/* One received MIDI event, from USB or from the JT-4000M's MIDI socket: ev[0] & 0x0F is
+ * the kind (8 note off, 9 note on, 0xB controller, 0xE pitch bend, 4..7 SysEx pieces,
+ * 0xF a single byte such as clock), ev[1..3] the MIDI bytes. ev[0] & 0xF0 says where it
+ * came from: 0 for USB, JT_MIDI_SOCKET for the socket. */
+#define JT_MIDI_SOCKET 0x10
 bool jt_midi_get(uint8_t ev[4]);
+/* The JT-4000M's MIDI socket: input only, 31250 baud. jt_init starts it on a JT-4000M and
+ * does nothing on a JT-4000 Micro; it needs no jt_usb_init. Received bytes wait in a
+ * 256-byte ring (82 ms of a full stream) until jt_midi_get is called. */
+void jt_midi_socket_init(void);
 void jt_midi_send(uint8_t status, uint8_t d1, uint8_t d2);     /* channel messages, e.g. 0x90, note, velocity */
 void jt_midi_send_sysex(const uint8_t *msg, int n);            /* complete message, F0 ... F7 */
 #endif

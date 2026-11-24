@@ -164,6 +164,48 @@ Read from the firmware's pin-setup code (`HAL_GPIO_Init` at `0x0800B2A8` and its
 - The OLED is on SPI (write-only: no MISO pin is set up), not I2C.
 - The EEPROM shares I2C1 with the LED/key chip, which the application polls every 170 ms. An external programmer must stop the MCU first (debug probe halt), or its transfers will collide.
 
+## JT-4000M differences (from firmware 1.1.6)
+
+The JT-4000M Micro adds a MIDI input socket. Its firmware has the same image format, key,
+application address and reset vector as the JT-4000 Micro's (`tools/fwfetch.py --m`), and its
+pin setup differs in three places. Read from the decompiled 1.1.6 image
+(`firmware/decrypted/JT-4000M_V116.bin`, base `0x08008000`); **not checked on a JT-4000M**.
+
+| Pin | JT-4000 Micro (1.1.5) | JT-4000M (1.1.6) | Evidence in 1.1.6 |
+|---|---|---|---|
+| PA15 | OLED data/command (output) | USART2 RX, alternate function 7: the MIDI socket | pin setup at `0x0800DB9C` |
+| PB0 | ADC1 channel 15: keyboard key-down line | OLED data/command (output) | `gpio_init` at `0x0800EB78`; display writes at `0x080185F4` (command) and `0x08018630` (data) |
+| Keyboard key-down line | PB0 | not read; the ADC setup configures PA2 and PA3 only | ADC pin setup at `0x0800AC4C` |
+
+| MIDI socket | Value |
+|---|---|
+| Peripheral | USART2 (`0x40004400`), 31250 baud, 8 data bits, no parity (`0x0800EEE4`) |
+| Direction | Receive only: no transmit pin is set up |
+| Transfer | Circular DMA from the receive register into a 64-byte buffer: DMA request 26, interrupt 12 (DMA1 channel 2) |
+
+| USB | JT-4000 Micro | JT-4000M | Source |
+|---|---|---|---|
+| Application | `1397:127D` | `1397:12C7` | device descriptor in each image; SynthTribe's `config.json` |
+| Bootloader | `1397:127E` | `1397:12C8` | SynthTribe's `config.json`; the Micro's verified |
+| SysEx model bytes | `00 01 38` | `00 01 38` | SynthTribe's `config.json` |
+
+- The 32-pin MCU has no spare pin, so the socket took PA15 and the display line took PB0 (inference).
+- With addresses and calls masked, 85.7% of the 1.1.6 image also occurs in 1.1.5; 1.1.5 against 1.1.4 gives 83% on the same measure.
+- Not known: the JT-4000M bootloader's info string, and whether it enters update mode with the same two buttons.
+
+### How the SDK tells the two apart
+
+One SDK image runs on both. `jt_gpio_init` reads PA15 and PB0 as inputs with the internal pull-downs before it drives either pin (`detect_board` in `sdk/src/board.c`):
+
+| | PA15 | PB0 |
+|---|---|---|
+| JT-4000 Micro | low: only the display's input is on the line | high: the key-down line idles high; low while a key is touched |
+| JT-4000M | high: a MIDI line idles high and is high in every stop bit | low: only the display's input is on the line |
+
+The image treats the synth as a JT-4000M only when PA15 was seen high and PB0 was never high in 64 readings over about 4 ms. A JT-4000 Micro mistaken for a JT-4000M would drive PB0 against the keyboard chip's output; a JT-4000M mistaken for a Micro would drive PA15 against the MIDI receiver. The PA15 and PB0 levels in the table are inference from the two firmwares' pin setups; neither has been measured.
+
+**Verified on a JT-4000 Micro (2026-11-24):** `sdk/examples/tone` built with this test was flashed; the display, touch keys and knobs worked, so the synth was taken for a Micro. The JT-4000M row is untested.
+
 ## Reference documents
 
 Not stored in the repository; `docs/manuals/README.md` lists where to download each one (st.com, 2026-11-21):

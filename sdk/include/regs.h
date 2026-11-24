@@ -10,7 +10,7 @@
 #define RCC_AHB2ENR REG32(0x4002104C)
 
 typedef struct {
-    volatile uint32_t MODER, OTYPER, OSPEEDR, PUPDR, IDR, ODR, BSRR;
+    volatile uint32_t MODER, OTYPER, OSPEEDR, PUPDR, IDR, ODR, BSRR, LCKR, AFRL, AFRH;
 } gpio_t;
 #define GPIOA ((gpio_t *)0x48000000)
 #define GPIOB ((gpio_t *)0x48000400)

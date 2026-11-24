@@ -268,8 +268,10 @@ void jt_usb_init(void) {
     USB_BCDR = 0x8000;                              /* pull-up on: attach */
 }
 
+bool jt_midi_socket_get(uint8_t ev[4]);             /* socket.c */
+
 bool jt_midi_get(uint8_t ev[4]) {
-    if (rx_tail == rx_head) return false;
+    if (rx_tail == rx_head) return jt_midi_socket_get(ev);
     uint32_t e = rxq[rx_tail];
     rx_tail = (uint8_t)((rx_tail + 1) % QN);
     ev[0] = (uint8_t)e; ev[1] = (uint8_t)(e >> 8); ev[2] = (uint8_t)(e >> 16); ev[3] = (uint8_t)(e >> 24);

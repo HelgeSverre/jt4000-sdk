@@ -3,7 +3,13 @@
 Build custom firmware for the Behringer JT-4000 Micro in C and flash it over USB, without
 SynthTribe or a debug probe.
 
-Everything here has run on a real JT-4000 at the full 170 MHz clock.
+Everything here has run on a real JT-4000 Micro at the full 170 MHz clock.
+
+The same image also supports the JT-4000M (the version with a MIDI socket): it finds out at
+start-up which synth it is on, uses the JT-4000M's display pin and reads its MIDI socket.
+That support is built from the JT-4000M's stock firmware and runs in the simulator
+(`--board m`). It has not been tried on a JT-4000M; see "JT-4000M differences" in
+`../docs/HARDWARE.md`.
 
 ## Requirements
 
@@ -36,12 +42,13 @@ To return to stock firmware: `uv run ../tools/flash.py flash ../firmware/JT-4000
 |---|---|
 | `jt_init()` | 170 MHz clock, GPIO, display, lights, knobs, keyboard |
 | `jt_delay_ms(ms)` | blocking delay (SysTick, polled) |
+| `jt_board()` | `JT_BOARD_MICRO` or `JT_BOARD_M`, found by `jt_init`; `DEFS=-DJT_BOARD_FORCE=JT_BOARD_M` skips the test |
 | `jt_oled_clear/pixel/text/flush` | 128×32 frame buffer; 8×8 font gives 16×4 characters |
 | `jt_oled_line`, `jt_oled_text_big`, `jt_oled_get`, `jt_oled_invert` | lines, scaled text, pixel read-back, whole-panel invert |
 | `jt_button_osc()`, `jt_button_settings()` | the two buttons wired to the MCU |
 | `jt_leds(mask)` | the six button lights (`JT_LED_*`) |
 | `jt_keys_raw(buf)` | scanned buttons: LFO, FILTER, AMP, ARP, SELECT press (`JT_KEY_*`) |
-| `jt_pot(n)` | `JT_ADC_CUTOFF`, `JT_ADC_RESONANCE`, `JT_ADC_KEYBOARD` (key-down line), 0..4095 |
+| `jt_pot(n)` | `JT_ADC_CUTOFF`, `JT_ADC_RESONANCE`, `JT_ADC_KEYBOARD` (key-down line; always 4095 on a JT-4000M), 0..4095 |
 | `jt_keyboard()` | 16 key bits; `jt_keyboard_lowest()` gives the lowest held key |
 | `jt_encoder()` | SELECT knob position |
 | `jt_i2c_write/read` | the bus with the EEPROM and LED/key chip |
@@ -50,7 +57,8 @@ To return to stock firmware: `uv run ../tools/flash.py flash ../firmware/JT-4000
 | `jt_audio_init(render)` | 12-bit DAC at 32 kHz; `render(out, n)` is called from an interrupt for each 2 ms block |
 | `jt_filter(cutoff, resonance)` | the analog filter, each 0..1000 |
 | `jt_usb_init()` | class-compliant USB-MIDI device "JT-4000 SDK" (`1397:127D`), runs from the USB interrupt. Also answers the flasher's "reboot to update mode" message from that interrupt, so `make flash` works whatever the main loop is doing |
-| `jt_midi_get(ev)` | next received USB-MIDI event (4 bytes), false when none |
+| `jt_midi_get(ev)` | next received MIDI event (4 bytes), false when none. `ev[0] & 0x0F` is the kind; `ev[0] & 0xF0` is 0 for USB and `JT_MIDI_SOCKET` for the JT-4000M's MIDI socket |
+| `jt_midi_socket_init()` | the JT-4000M's MIDI socket (input, 31250 baud). `jt_init` calls it; it does nothing on a JT-4000 Micro. Works without `jt_usb_init` |
 | `jt_midi_send(status, d1, d2)`, `jt_midi_send_sysex(msg, n)` | send to the host |
 | `jt_poll_escape()` | optional: call in the main loop to make OSC + SETTINGS, held while the firmware runs, restart into update mode |
 | `jt_enter_update_mode()` | set the bootloader's EEPROM flag and reset |

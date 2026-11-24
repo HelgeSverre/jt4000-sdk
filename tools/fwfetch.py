@@ -11,6 +11,7 @@ SynthTribe does not have to be installed.
     uv run tools/fwfetch.py --all        # every released version
     uv run tools/fwfetch.py --list
     uv run tools/fwfetch.py --all --decrypt   # also write firmware/decrypted/ (for Ghidra)
+    uv run tools/fwfetch.py --m               # the JT-4000M's firmware instead
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ import cli
 API = "https://cloud.midasconsoles.com/api/v2"
 CLIENT = "63dbaa87-15b1-4681-a47f-34ea5bfd10df"  # SynthTribe's client id
 MODEL = "behringer/jt-4000-micro/jt-4000-micro"
+MODEL_M = "behringer/jt-4000m/jt-4000m"  # the JT-4000M: same image format and key
 ROOT = Path(__file__).resolve().parent.parent
 # The 512-byte handshake secret, as stored (in hex) in the SynthTribe 2.9.0 executable.
 # Set JT_CLOUD_SECRET to override it if a later SynthTribe changes it.
@@ -133,12 +135,15 @@ def main() -> None:
         "--list", action="store_true", help="show what the server has and stop"
     )
     p.add_argument("--decrypt", action="store_true", help="also write decrypted copies")
+    p.add_argument(
+        "--m", action="store_true", help="the JT-4000M's firmware (JT-4000M_*.bin)"
+    )
     p.add_argument("--out", type=Path, default=ROOT / "firmware")
     a = p.parse_args()
 
     try:
         token = login(secret())
-        recs = call(f"/firmware/{MODEL}", token=token)
+        recs = call(f"/firmware/{MODEL_M if a.m else MODEL}", token=token)
         recs[0]["version"], recs[0]["filename"], recs[0]["checksum"], recs[0]["s3Url"]
     except (KeyError, IndexError, TypeError) as e:
         sys.exit(
@@ -158,7 +163,9 @@ def main() -> None:
             from fwpack import KEY
 
             plain = (
-                a.out / "decrypted" / f"JT-4000_V{rec['version'].replace('.', '')}.bin"
+                a.out
+                / "decrypted"
+                / f"JT-4000{'M' if a.m else ''}_V{rec['version'].replace('.', '')}.bin"
             )
             plain.parent.mkdir(parents=True, exist_ok=True)
             plain.write_bytes(cbc_decrypt(KEY, path.read_bytes()))

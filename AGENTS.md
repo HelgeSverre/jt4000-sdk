@@ -1,6 +1,7 @@
 # Working on JT-4000 firmware
 
-Custom firmware for the Behringer JT-4000 Micro synth (STM32G431, bare-metal C). The user
+Custom firmware for the Behringer JT-4000 Micro synth (STM32G431, bare-metal C); the same
+image also runs on the JT-4000M, which adds a MIDI socket (`jt_board()`). The user
 has the synth; you cannot see or hear it. Check every change in the simulator first, then
 ask the user to check it on the synth.
 
@@ -175,6 +176,18 @@ buttons, turns SELECT, touches keys and prints the display at set times, e.g.
 firmware. The simulator does not model USB or exact timing: test USB code on the synth,
 and a display routine that is fast in the simulator might still be slow on hardware. Read
 `uv run --with unicorn ../tools/emu.py --help` for the inputs you can hold.
+
+`--board m` simulates a JT-4000M: the display's data/command line is on PB0, and
+`midi=903c64` in a `--script` puts those bytes into its MIDI socket. Run a firmware that
+touches pins or MIDI on both boards. The log names the reason when socket bytes are lost
+(wrong pin mode, baud rate, DMA not set up). Nobody has run SDK code on a real JT-4000M:
+say so when you report.
+
+Write a register with an unconditional store. `if (m) GPIOB->BSRR = x; else GPIOA->BSRR = y;`
+compiled to two conditional stores, and the simulator then skipped the instruction after
+them and reported `CPU FAULT`; choosing the port and pin first and storing once fixed it
+(`dc` in `sdk/src/oled.c`). The cause is in the simulator, not the synth (inference: the
+same code was never flashed).
 
 ## Where things are
 

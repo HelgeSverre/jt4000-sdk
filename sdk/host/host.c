@@ -54,6 +54,8 @@ void jt_adc_init(void) {}
 void jt_keyboard_init(void) {}
 void jt_encoder_init(void) {}
 void jt_usb_init(void) {}
+void jt_midi_socket_init(void) {}
+int jt_board(void) { return JT_BOARD_MICRO; }
 void jt_poll_escape(void) {}
 
 void jt_delay_ms(uint32_t ms) {
